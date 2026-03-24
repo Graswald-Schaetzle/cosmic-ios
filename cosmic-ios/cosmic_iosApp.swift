@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SwiftData
 
 @main
 struct cosmic_iosApp: App {
@@ -25,5 +26,6 @@ struct cosmic_iosApp: App {
                 await authService.restoreSession()
             }
         }
+        .modelContainer(for: ScanRecord.self)
     }
 }

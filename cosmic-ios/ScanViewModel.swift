@@ -1,6 +1,7 @@
 import Foundation
 import ARKit
 import Combine
+import SwiftData
 
 /// Präsentationslogik und State-Management für den Scan-Flow.
 /// Koordiniert ARMeshScannerService und UploadService.
@@ -30,6 +31,7 @@ final class ScanViewModel: ObservableObject {
 
     private var scanTimer: Timer?
     private var uploaderCancellable: AnyCancellable?
+    private var currentScanRecord: ScanRecord?
 
     // MARK: - Init
 
@@ -46,13 +48,14 @@ final class ScanViewModel: ObservableObject {
         errorMessage = nil
         meshAnchorCount = 0
         scanDuration = 0
+        currentScanRecord = nil
         isScanning = true
 
         scanner.startScan()
         startTimer()
     }
 
-    func stopAndExport() async {
+    func stopAndExport(modelContext: ModelContext) async {
         guard isScanning else { return }
         stopTimer()
         isScanning = false
@@ -62,6 +65,11 @@ final class ScanViewModel: ObservableObject {
         do {
             let url = try await scanner.exportToUSDZ()
             exportedFileURL = url
+
+            let scanName = "Raum \(formattedDate())"
+            let record = ScanRecord(name: scanName, localFileURL: url)
+            modelContext.insert(record)
+            currentScanRecord = record
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -79,12 +87,13 @@ final class ScanViewModel: ObservableObject {
         uploadProgress = 0
         errorMessage = nil
 
-        let spaceName = "Raum \(formattedDate())"
+        let spaceName = currentScanRecord?.name ?? "Raum \(formattedDate())"
 
         do {
             let result = try await uploader.uploadScan(fileURL: fileURL, spaceName: spaceName)
             print("Upload erfolgreich: \(result.modelUrl)")
-            // TODO: Navigation zur Erfolgsseite / Space-Detailansicht
+            currentScanRecord?.remoteURL = result.modelUrl
+            currentScanRecord?.isUploaded = true
         } catch {
             errorMessage = error.localizedDescription
         }

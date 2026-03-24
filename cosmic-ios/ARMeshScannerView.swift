@@ -1,5 +1,6 @@
 import SwiftUI
 import ARKit
+import SwiftData
 
 /// UIViewRepresentable-Wrapper für ARSCNView (benötigt UIKit-Integration)
 struct ARMeshViewRepresentable: UIViewRepresentable {
@@ -12,6 +13,7 @@ struct ARMeshViewRepresentable: UIViewRepresentable {
 /// Haupt-Scan-View – eingebettet in ContentView.
 struct ARMeshScannerView: View {
     @StateObject private var viewModel = ScanViewModel()
+    @Environment(\.modelContext) private var modelContext
     @State private var showErrorAlert = false
 
     var body: some View {
@@ -165,7 +167,7 @@ struct ARMeshScannerView: View {
     private var scanButton: some View {
         Button {
             if viewModel.isScanning {
-                Task { await viewModel.stopAndExport() }
+                Task { await viewModel.stopAndExport(modelContext: modelContext) }
             } else {
                 viewModel.startScan()
             }
