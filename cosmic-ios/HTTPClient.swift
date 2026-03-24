@@ -63,17 +63,8 @@ final class HTTPClient {
 
     // MARK: - Auth Token
 
-    // TODO: Keychain statt UserDefaults verwenden
     var authToken: String? {
-        UserDefaults.standard.string(forKey: "cosmic_auth_token")
-    }
-
-    func setAuthToken(_ token: String) {
-        UserDefaults.standard.set(token, forKey: "cosmic_auth_token")
-    }
-
-    func clearAuthToken() {
-        UserDefaults.standard.removeObject(forKey: "cosmic_auth_token")
+        KeychainService.get("cosmic_backend_token")
     }
 
     // MARK: - Init

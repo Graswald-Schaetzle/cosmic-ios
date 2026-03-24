@@ -20,11 +20,6 @@ final class UploadService: ObservableObject {
 
     // MARK: - Public API
 
-    /// Speichert den Supabase JWT-Auth-Token für folgende Requests.
-    func setAuthToken(_ token: String) {
-        HTTPClient.shared.setAuthToken(token)
-    }
-
     /// Lädt eine .usdz-Datei ans Backend hoch und legt einen neuen Space-Eintrag an.
     func uploadScan(fileURL: URL, spaceName: String) async throws -> UploadResult {
         guard HTTPClient.shared.authToken != nil else {
