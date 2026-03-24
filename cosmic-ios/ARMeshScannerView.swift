@@ -36,6 +36,11 @@ struct ARMeshScannerView: View {
             RoomCaptureViewRepresentable(roomCaptureView: viewModel.roomCaptureView)
                 .ignoresSafeArea()
 
+            // Live LiDAR mesh wireframe overlay (Polycam-style)
+            ARMeshVisualizationView(meshPublisher: viewModel.meshPublisher)
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
+
             VStack(spacing: 0) {
                 statusHeader
                     .padding(.top, 12)
@@ -120,16 +125,31 @@ struct ARMeshScannerView: View {
 
     @State private var pulsing: Double = 1.0
 
-    /// Drei Punkte als Qualitätsindikator – basierend auf erkannten Raumelementen.
+    /// Qualitätsindikator: RoomPlan-Elemente (Punkte) + LiDAR-Frames.
     private var roomQualityIndicator: some View {
-        HStack(spacing: 4) {
-            Text("Elemente")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-            ForEach(0..<3) { index in
-                Circle()
-                    .fill(dotColor(for: index))
-                    .frame(width: 8, height: 8)
+        HStack(spacing: 8) {
+            // LiDAR frame counter
+            if viewModel.isScanning && viewModel.lidarFrameCount > 0 {
+                HStack(spacing: 3) {
+                    Image(systemName: "cube.fill")
+                        .font(.caption2)
+                        .foregroundStyle(.cyan)
+                    Text("\(viewModel.lidarFrameCount)")
+                        .font(.caption2.monospacedDigit())
+                        .foregroundStyle(.cyan)
+                }
+            }
+
+            // RoomPlan element dots
+            HStack(spacing: 4) {
+                Text("Elemente")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                ForEach(0..<3) { index in
+                    Circle()
+                        .fill(dotColor(for: index))
+                        .frame(width: 8, height: 8)
+                }
             }
         }
     }
