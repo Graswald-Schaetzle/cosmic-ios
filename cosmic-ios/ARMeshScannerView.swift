@@ -1,43 +1,55 @@
 import SwiftUI
-import ARKit
+import RoomPlan
 import SwiftData
 
-/// UIViewRepresentable-Wrapper für ARSCNView (benötigt UIKit-Integration)
-struct ARMeshViewRepresentable: UIViewRepresentable {
-    let arView: ARSCNView
+// MARK: - RoomCaptureViewRepresentable
 
-    func makeUIView(context: Context) -> ARSCNView { arView }
-    func updateUIView(_ uiView: ARSCNView, context: Context) {}
+/// UIViewRepresentable-Wrapper für RoomCaptureView (benötigt UIKit-Integration).
+struct RoomCaptureViewRepresentable: UIViewRepresentable {
+    let roomCaptureView: RoomCaptureView
+
+    func makeUIView(context: Context) -> RoomCaptureView { roomCaptureView }
+    func updateUIView(_ uiView: RoomCaptureView, context: Context) {}
 }
 
+// MARK: - ARMeshScannerView
+
 /// Haupt-Scan-View – eingebettet in ContentView.
+/// Zeigt RoomCaptureView auf LiDAR-Geräten; auf anderen einen Fallback-Hinweis.
 struct ARMeshScannerView: View {
     @StateObject private var viewModel = ScanViewModel()
     @Environment(\.modelContext) private var modelContext
     @State private var showErrorAlert = false
 
     var body: some View {
+        if ARTrackingService.isSupported {
+            scannerContent
+        } else {
+            lidarUnavailableView
+        }
+    }
+
+    // MARK: - Scanner Content
+
+    private var scannerContent: some View {
         ZStack {
-            // AR-Kameraansicht mit LiDAR-Mesh
-            ARMeshViewRepresentable(arView: viewModel.sceneView)
+            RoomCaptureViewRepresentable(roomCaptureView: viewModel.roomCaptureView)
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Status-Header
                 statusHeader
                     .padding(.top, 12)
                     .padding(.horizontal, 16)
 
                 Spacer()
 
-                // Bottom Controls
                 bottomControls
                     .padding(.horizontal, 20)
                     .padding(.bottom, 40)
             }
         }
         .onAppear { viewModel.startScan() }
-        .onDisappear { viewModel.sceneView.session.pause() }
+        .onDisappear { viewModel.pauseIfNeeded() }
         .alert("Fehler", isPresented: $showErrorAlert) {
             Button("OK") { viewModel.dismissError() }
         } message: {
@@ -48,13 +60,31 @@ struct ARMeshScannerView: View {
         }
     }
 
+    // MARK: - LiDAR Unavailable Fallback
+
+    private var lidarUnavailableView: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "sensor.tag.radiowaves.forward.fill")
+                .font(.system(size: 64))
+                .foregroundStyle(.secondary)
+            Text("LiDAR nicht verfügbar")
+                .font(.title2.weight(.semibold))
+            Text("Der 3D-Raumscan erfordert ein iPhone 12 Pro oder neuer bzw. ein iPad Pro (2020+) mit LiDAR-Scanner.")
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
     // MARK: - Status Header
 
     private var statusHeader: some View {
         HStack {
             scanStateIndicator
             Spacer()
-            meshQualityIndicator
+            roomQualityIndicator
         }
         .padding(12)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
@@ -90,9 +120,10 @@ struct ARMeshScannerView: View {
 
     @State private var pulsing: Double = 1.0
 
-    private var meshQualityIndicator: some View {
+    /// Drei Punkte als Qualitätsindikator – basierend auf erkannten Raumelementen.
+    private var roomQualityIndicator: some View {
         HStack(spacing: 4) {
-            Text("Netz")
+            Text("Elemente")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
             ForEach(0..<3) { index in
@@ -105,7 +136,7 @@ struct ARMeshScannerView: View {
 
     private func dotColor(for index: Int) -> Color {
         let thresholds = [1, 5, 15]
-        return viewModel.meshAnchorCount >= thresholds[index] ? .green : Color.secondary.opacity(0.3)
+        return viewModel.detectedElementCount >= thresholds[index] ? .green : Color.secondary.opacity(0.3)
     }
 
     // MARK: - Bottom Controls

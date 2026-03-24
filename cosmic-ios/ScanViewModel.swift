@@ -1,10 +1,10 @@
 import Foundation
-import ARKit
+import RoomPlan
 import Combine
 import SwiftData
 
 /// Präsentationslogik und State-Management für den Scan-Flow.
-/// Koordiniert ARMeshScannerService und UploadService.
+/// Koordiniert ARTrackingService und UploadService.
 @MainActor
 final class ScanViewModel: ObservableObject {
 
@@ -16,16 +16,16 @@ final class ScanViewModel: ObservableObject {
     @Published private(set) var exportedFileURL: URL?
     @Published private(set) var uploadProgress: Double = 0.0
     @Published private(set) var errorMessage: String?
-    @Published private(set) var meshAnchorCount: Int = 0
+    @Published private(set) var detectedElementCount: Int = 0
     @Published private(set) var scanDuration: TimeInterval = 0
 
     // MARK: - Dependencies
 
-    private let scanner = ARMeshScannerService()
+    private let scanner = ARTrackingService()
     private let uploader = UploadService.shared
 
-    /// ARSCNView nach oben durchreichen, damit die View es einbetten kann
-    var sceneView: ARSCNView { scanner.sceneView }
+    /// RoomCaptureView nach oben durchreichen, damit die View es einbetten kann.
+    var roomCaptureView: RoomCaptureView { scanner.roomCaptureView }
 
     // MARK: - Private
 
@@ -46,7 +46,7 @@ final class ScanViewModel: ObservableObject {
     func startScan() {
         exportedFileURL = nil
         errorMessage = nil
-        meshAnchorCount = 0
+        detectedElementCount = 0
         scanDuration = 0
         currentScanRecord = nil
         isScanning = true
@@ -63,7 +63,8 @@ final class ScanViewModel: ObservableObject {
         errorMessage = nil
 
         do {
-            let url = try await scanner.exportToUSDZ()
+            let roomData = try await scanner.stopAndGetData()
+            let url = try await scanner.exportToUSDZ(from: roomData)
             exportedFileURL = url
 
             let scanName = "Raum \(formattedDate())"
@@ -101,6 +102,14 @@ final class ScanViewModel: ObservableObject {
         isUploading = false
     }
 
+    /// Pausiert eine laufende Session beim Verlassen der View.
+    func pauseIfNeeded() {
+        guard isScanning else { return }
+        scanner.roomCaptureView.captureSession.stop(pauseARSession: true)
+        isScanning = false
+        stopTimer()
+    }
+
     func dismissError() {
         errorMessage = nil
     }
@@ -111,7 +120,7 @@ final class ScanViewModel: ObservableObject {
         scanTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
                 self?.scanDuration += 1
-                self?.meshAnchorCount = self?.scanner.meshAnchorCount ?? 0
+                self?.detectedElementCount = self?.scanner.detectedElementCount ?? 0
             }
         }
     }
