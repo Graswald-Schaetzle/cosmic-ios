@@ -48,8 +48,10 @@ final class ARTrackingService: NSObject {
 
     // MARK: - Export
 
-    /// Verarbeitet CapturedRoomData mit RoomBuilder und exportiert als .usdz.
-    func exportToUSDZ(from roomData: CapturedRoomData) async throws -> URL {
+    /// Verarbeitet CapturedRoomData mit RoomBuilder, exportiert als .usdz
+    /// und gibt gleichzeitig den strukturierten CapturedRoom zurück
+    /// (für Objekterkennung / Spatial Upload – kein doppelter Build-Aufruf).
+    func exportToUSDZ(from roomData: CapturedRoomData) async throws -> (fileURL: URL, capturedRoom: CapturedRoom) {
         let builder = RoomBuilder(options: [.beautifyObjects])
         let capturedRoom = try await builder.capturedRoom(from: roomData)
 
@@ -63,7 +65,7 @@ final class ARTrackingService: NSObject {
         let fileName = "Cosmic-Scan-\(UUID().uuidString.prefix(8)).usdz"
         let fileURL = documentsDir.appendingPathComponent(fileName)
         try capturedRoom.export(to: fileURL)
-        return fileURL
+        return (fileURL, capturedRoom)
     }
 }
 

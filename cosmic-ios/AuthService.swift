@@ -159,7 +159,7 @@ final class AuthService: ObservableObject {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        let body = ["clerk_id": supabaseUserId]
+        let body = ["supabase_id": supabaseUserId]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
         let (data, response) = try await session.data(for: request)
