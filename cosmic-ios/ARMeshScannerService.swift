@@ -1,53 +1,116 @@
 import Foundation
 import ARKit
 import SceneKit
-import Combine
 
+/// Kapsel für den ARKit-LiDAR-Scan und USDZ-Export.
+/// Reine Service-Schicht – kein UI, kein State-Management.
 @MainActor
-class ARMeshScannerService: NSObject, ObservableObject, ARSessionDelegate {
-    static let shared = ARMeshScannerService()
-    
+final class ARMeshScannerService: NSObject {
+
+    // MARK: - Public Properties
+
     let sceneView = ARSCNView(frame: .zero)
-    @Published var isScanning = false
-    @Published var exportUrl: URL?
-    
-    override private init() {
+
+    /// Anzahl der aktuell erkannten Mesh-Anker (für Qualitätsanzeige im ViewModel)
+    private(set) var meshAnchorCount: Int = 0
+
+    // MARK: - Init
+
+    override init() {
         super.init()
         sceneView.session.delegate = self
+        sceneView.showsStatistics = false
+        sceneView.automaticallyUpdatesLighting = true
+
     }
-    
-    func start() {
+
+    // MARK: - Scanning
+
+    func startScan() {
+        meshAnchorCount = 0
         let config = ARWorldTrackingConfiguration()
-        
-        // Aktiviere das echte Raum-Gitter (LiDAR Mesh)
+
         if ARWorldTrackingConfiguration.supportsSceneReconstruction(.meshWithClassification) {
             config.sceneReconstruction = .meshWithClassification
         } else if ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh) {
             config.sceneReconstruction = .mesh
         }
-        
+
         sceneView.session.run(config, options: [.resetTracking, .removeExistingAnchors])
-        isScanning = true
-        exportUrl = nil
     }
-    
-    func stopAndExport() {
+
+    func pauseScan() {
         sceneView.session.pause()
-        isScanning = false
-        
-        let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-        let fileName = "LiDAR-Mesh-\(UUID().uuidString.prefix(8)).usdz"
-        let fileURL = documentsDirectory.appendingPathComponent(fileName)
-        
-        sceneView.scene.write(to: fileURL, options: nil, delegate: nil) { (totalProgress, error, stop) in
-            DispatchQueue.main.async {
-                if let error = error {
-                    print("Mesh Export Error: \(error.localizedDescription)")
+    }
+
+    // MARK: - Export
+
+    /// Pausiert die Session und exportiert die Szene als .usdz-Datei.
+    ///
+    /// NOTE: Exportiert rohes LiDAR-Gitter ohne Texturen.
+    /// Für fotorealistischen Export: PhotogrammetrySession oder Metal-Shader
+    /// für die Projektion des ARCamera-Feeds auf die Mesh-Nodes verwenden.
+    func exportToUSDZ() async throws -> URL {
+        sceneView.session.pause()
+
+        guard let documentsDir = FileManager.default.urls(
+            for: .documentDirectory,
+            in: .userDomainMask
+        ).first else {
+            throw ExportError.documentsDirectoryUnavailable
+        }
+
+        let fileName = "Cosmic-Scan-\(UUID().uuidString.prefix(8)).usdz"
+        let fileURL = documentsDir.appendingPathComponent(fileName)
+
+        return try await withCheckedThrowingContinuation { continuation in
+            sceneView.scene.write(
+                to: fileURL,
+                options: nil,
+                delegate: nil
+            ) { totalProgress, error, _ in
+                if let error {
+                    continuation.resume(throwing: ExportError.writeFailed(error.localizedDescription))
                 } else if totalProgress == 1.0 {
-                    self.exportUrl = fileURL
-                    print("Successfully exported LiDAR Mesh to \(fileURL.path)")
+                    continuation.resume(returning: fileURL)
                 }
             }
+        }
+    }
+}
+
+// MARK: - ARSessionDelegate
+
+extension ARMeshScannerService: ARSessionDelegate {
+    nonisolated func session(_ session: ARSession, didAdd anchors: [ARAnchor]) {
+        let meshCount = anchors.filter { $0 is ARMeshAnchor }.count
+        guard meshCount > 0 else { return }
+        Task { @MainActor in
+            self.meshAnchorCount += meshCount
+        }
+    }
+
+    nonisolated func session(_ session: ARSession, didUpdate anchors: [ARAnchor]) {}
+
+    nonisolated func session(_ session: ARSession, didFailWithError error: Error) {
+        Task { @MainActor in
+            print("ARSession Fehler: \(error.localizedDescription)")
+        }
+    }
+}
+
+// MARK: - Errors
+
+enum ExportError: LocalizedError {
+    case documentsDirectoryUnavailable
+    case writeFailed(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .documentsDirectoryUnavailable:
+            return "Dokumente-Ordner nicht verfügbar."
+        case .writeFailed(let reason):
+            return "Export fehlgeschlagen: \(reason)"
         }
     }
 }
