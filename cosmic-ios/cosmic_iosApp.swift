@@ -9,9 +9,21 @@ import SwiftUI
 
 @main
 struct cosmic_iosApp: App {
+
+    @StateObject private var authService = AuthService.shared
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            Group {
+                if authService.isAuthenticated {
+                    ContentView()
+                } else {
+                    LoginView()
+                }
+            }
+            .task {
+                await authService.restoreSession()
+            }
         }
     }
 }

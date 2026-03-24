@@ -18,9 +18,8 @@ final class UploadService: ObservableObject {
 
     private let baseURL = "https://api.cosmic-app.de"
 
-    // TODO: Keychain statt UserDefaults für den Auth-Token verwenden.
     private var authToken: String {
-        UserDefaults.standard.string(forKey: "cosmic_auth_token") ?? ""
+        AuthService.shared.backendToken ?? ""
     }
 
     private let session: URLSession = {
@@ -35,12 +34,6 @@ final class UploadService: ObservableObject {
     private init() {}
 
     // MARK: - Public API
-
-    /// Speichert den Supabase JWT-Auth-Token für folgende Requests.
-    func setAuthToken(_ token: String) {
-        // TODO: Token im Keychain statt UserDefaults speichern.
-        UserDefaults.standard.set(token, forKey: "cosmic_auth_token")
-    }
 
     /// Lädt eine .usdz-Datei ans Backend hoch und legt einen neuen Space-Eintrag an.
     func uploadScan(fileURL: URL, spaceName: String) async throws -> UploadResult {
