@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SwiftData
 
 @main
 struct cosmic_iosApp: App {
@@ -13,5 +14,6 @@ struct cosmic_iosApp: App {
         WindowGroup {
             ContentView()
         }
+        .modelContainer(for: ScanRecord.self)
     }
 }
