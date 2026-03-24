@@ -1,0 +1,30 @@
+# macOS
+.DS_Store
+._.DS_Store
+._*
+*.DS_Store
+
+# Xcode user-specific
+xcuserdata/
+*.xcuserstate
+*.xccheckout
+*.moved-aside
+DerivedData/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# CocoaPods
+Pods/
+Podfile.lock
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
