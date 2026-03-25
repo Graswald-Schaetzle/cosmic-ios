@@ -46,7 +46,7 @@ final class HTTPClient {
 
     // MARK: - Properties
 
-    private let baseURL: String = "https://api.cosmic-app.de"
+    private let baseURL: String = Config.backendBaseURL
 
     private let session: URLSession = {
         let config = URLSessionConfiguration.default

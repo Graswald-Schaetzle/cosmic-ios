@@ -205,11 +205,11 @@ enum PackagerError: LocalizedError {
 private extension Data {
     mutating func appendUInt16(_ value: UInt16) {
         var v = value.littleEndian
-        append(contentsOf: withUnsafeBytes(of: &v) { Array($0) })
+        append(contentsOf: Swift.withUnsafeBytes(of: &v) { Array($0) })
     }
     mutating func appendUInt32(_ value: UInt32) {
         var v = value.littleEndian
-        append(contentsOf: withUnsafeBytes(of: &v) { Array($0) })
+        append(contentsOf: Swift.withUnsafeBytes(of: &v) { Array($0) })
     }
 }
 

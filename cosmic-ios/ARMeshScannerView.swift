@@ -168,12 +168,36 @@ struct ARMeshScannerView: View {
                 uploadProgressView
             }
 
-            if let url = viewModel.exportedFileURL, !viewModel.isUploading {
+            if let space = viewModel.uploadedSpace {
+                uploadSuccessCard(space: space)
+            } else if let url = viewModel.exportedFileURL, !viewModel.isUploading {
                 exportSuccessCard(url: url)
             }
 
             scanButton
         }
+    }
+
+    private func uploadSuccessCard(space: Space) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.title2)
+                .foregroundStyle(.green)
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Erfolgreich hochgeladen")
+                    .font(.subheadline.weight(.semibold))
+                Text(space.name)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text("Space #\(space.id) • in der Cloud gespeichert")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+            Spacer()
+        }
+        .padding(14)
+        .background(Color.green.opacity(0.12), in: RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.green.opacity(0.3), lineWidth: 1))
     }
 
     private var uploadProgressView: some View {

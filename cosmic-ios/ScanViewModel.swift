@@ -1,4 +1,5 @@
 import Foundation
+import ARKit
 import RoomPlan
 import Combine
 import SwiftData
@@ -19,6 +20,9 @@ final class ScanViewModel: ObservableObject {
     @Published private(set) var detectedElementCount: Int = 0
     @Published private(set) var scanDuration: TimeInterval = 0
     @Published private(set) var lidarFrameCount: Int = 0
+
+    /// Gesetzt nachdem der Upload erfolgreich abgeschlossen wurde.
+    @Published private(set) var uploadedSpace: Space?
 
     // MARK: - Dependencies
 
@@ -65,6 +69,7 @@ final class ScanViewModel: ObservableObject {
         currentScanId      = nil
         currentScanDirectory = nil
         lastUploadResult   = nil
+        uploadedSpace      = nil
         isScanning         = true
 
         let scanId = UUID().uuidString
@@ -135,6 +140,7 @@ final class ScanViewModel: ObservableObject {
             // Upload USDZ model
             let result = try await uploader.uploadScan(fileURL: fileURL, spaceName: spaceName)
             lastUploadResult = result
+            uploadedSpace    = result.space
             print("USDZ-Upload erfolgreich: \(result.modelUrl)")
             currentScanRecord?.remoteURL  = result.modelUrl
             currentScanRecord?.isUploaded = true

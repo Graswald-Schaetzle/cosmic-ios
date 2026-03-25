@@ -39,6 +39,9 @@ final class LiDARCaptureService: NSObject {
     private var scanDirectory: URL?
     private var framesDirectory: URL?
 
+    /// Hält den Multiplexer am Leben solange die Capture-Session läuft.
+    private var delegateMultiplexer: ARSessionDelegateMultiplexer?
+
     // Frame-rate counters (accessed only from ARKit delegate queue)
     private var frameCounter: Int = 0
     private var capturedIndex: Int = 0
@@ -83,14 +86,25 @@ final class LiDARCaptureService: NSObject {
         frameRecords    = []
         capturedFrameCount = 0
 
-        self.arSession = arSession
-        arSession.delegate = self
+        // Multiplexer: RoomPlan's original delegate bleibt erhalten UND
+        // LiDARCaptureService bekommt ebenfalls alle Frame-Callbacks.
+        // Ohne Multiplexer: arSession.delegate = self würde RoomPlan's Delegate
+        // überschreiben → Kamera-Preview wird schwarz, Raumscan bricht zusammen.
+        let multiplexer = ARSessionDelegateMultiplexer()
+        multiplexer.primary   = arSession.delegate  // RoomPlan's interner Delegate
+        multiplexer.secondary = self
+        delegateMultiplexer   = multiplexer          // starke Referenz halten!
+
+        self.arSession    = arSession
+        arSession.delegate = multiplexer
     }
 
     /// Stops frame capture, writes transforms.json, and returns the scan directory URL.
     /// Call AFTER the RoomCaptureSession has been stopped (so no more ARKit callbacks arrive).
     func stopAndFinalize() async throws -> URL {
-        arSession?.delegate = nil
+        // Ursprünglichen Delegate wiederherstellen (RoomPlan's internen Handler).
+        arSession?.delegate = delegateMultiplexer?.primary
+        delegateMultiplexer = nil
 
         // Drain the capture queue so all pending frame I/O and record appends finish.
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in

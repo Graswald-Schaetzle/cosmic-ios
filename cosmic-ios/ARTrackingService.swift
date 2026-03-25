@@ -53,7 +53,23 @@ final class ARTrackingService: NSObject {
     /// (für Objekterkennung / Spatial Upload – kein doppelter Build-Aufruf).
     func exportToUSDZ(from roomData: CapturedRoomData) async throws -> (fileURL: URL, capturedRoom: CapturedRoom) {
         let builder = RoomBuilder(options: [.beautifyObjects])
-        let capturedRoom = try await builder.capturedRoom(from: roomData)
+
+        // RoomBuilder kann bei leerem Scan unbegrenzt hängen → 30s Timeout.
+        let capturedRoom: CapturedRoom = try await withThrowingTaskGroup(of: CapturedRoom.self) { group in
+            group.addTask { try await builder.capturedRoom(from: roomData) }
+            group.addTask {
+                try await Task.sleep(nanoseconds: 30_000_000_000) // 30 Sekunden
+                throw ExportError.buildTimeout
+            }
+            do {
+                let result = try await group.next()!
+                group.cancelAll()
+                return result
+            } catch {
+                group.cancelAll()
+                throw error
+            }
+        }
 
         guard let documentsDir = FileManager.default.urls(
             for: .documentDirectory,
@@ -98,6 +114,7 @@ extension ARTrackingService: RoomCaptureSessionDelegate {
 enum ExportError: LocalizedError {
     case documentsDirectoryUnavailable
     case writeFailed(String)
+    case buildTimeout
 
     var errorDescription: String? {
         switch self {
@@ -105,6 +122,8 @@ enum ExportError: LocalizedError {
             return "Dokumente-Ordner nicht verfügbar."
         case .writeFailed(let reason):
             return "Export fehlgeschlagen: \(reason)"
+        case .buildTimeout:
+            return "Export-Timeout: Bitte länger scannen (mind. 10 Sekunden) damit RoomPlan genug Daten sammeln kann."
         }
     }
 }
