@@ -9,17 +9,7 @@ import SwiftUI
 
 struct ContentView: View {
     var body: some View {
-        TabView {
-            ARMeshScannerView()
-                .tabItem {
-                    Label("Scan", systemImage: "camera.viewfinder")
-                }
-
-            ScanHistoryView()
-                .tabItem {
-                    Label("Verlauf", systemImage: "clock")
-                }
-        }
+        CosmicHomeView()
     }
 }
 

@@ -88,6 +88,15 @@ final class HTTPClient {
         return try await perform(request)
     }
 
+    /// Generische PUT-Anfrage mit Codable-Body und automatischer Dekodierung.
+    func put<Body: Encodable, Response: Decodable>(_ path: String, body: Body) async throws -> Response {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let bodyData = try encoder.encode(body)
+        let request = try buildRequest(method: .PUT, path: path, body: bodyData, contentType: "application/json")
+        return try await perform(request)
+    }
+
     /// Multipart-Upload für Dateien (z. B. USDZ-Modelle) mit optionalem Progress-Callback.
     func upload<Response: Decodable>(
         _ path: String,
@@ -162,6 +171,10 @@ final class HTTPClient {
             throw HTTPClientError.networkError(error)
         }
 
+        if shouldRefreshAuth(response: response, data: data) {
+            return try await retryAfterRefreshingAuth(originalRequest: request)
+        }
+
         try validate(response: response, data: data)
 
         do {
@@ -186,6 +199,14 @@ final class HTTPClient {
             throw HTTPClientError.networkError(error)
         }
 
+        if shouldRefreshAuth(response: response, data: responseData) {
+            return try await retryUploadAfterRefreshingAuth(
+                originalRequest: request,
+                data: data,
+                onProgress: onProgress
+            )
+        }
+
         onProgress?(1.0)
 
         try validate(response: response, data: responseData)
@@ -207,6 +228,92 @@ final class HTTPClient {
             let message = String(data: data, encoding: .utf8) ?? "Kein Detail verfügbar."
             throw HTTPClientError.requestFailed(statusCode: httpResponse.statusCode, message: message)
         }
+    }
+
+    private func retryAfterRefreshingAuth<T: Decodable>(originalRequest: URLRequest) async throws -> T {
+        do {
+            try await AuthService.shared.refreshSessionIfNeeded(force: true)
+        } catch {
+            throw HTTPClientError.notAuthenticated
+        }
+
+        let retriedRequest = try rebuildAuthorizedRequest(from: originalRequest)
+        let (data, response): (Data, URLResponse)
+
+        do {
+            (data, response) = try await session.data(for: retriedRequest)
+        } catch {
+            throw HTTPClientError.networkError(error)
+        }
+
+        try validate(response: response, data: data)
+
+        do {
+            return try decoder.decode(T.self, from: data)
+        } catch {
+            throw HTTPClientError.decodingFailed
+        }
+    }
+
+    private func retryUploadAfterRefreshingAuth<T: Decodable>(
+        originalRequest: URLRequest,
+        data: Data,
+        onProgress: ((Double) -> Void)?
+    ) async throws -> T {
+        do {
+            try await AuthService.shared.refreshSessionIfNeeded(force: true)
+        } catch {
+            throw HTTPClientError.notAuthenticated
+        }
+
+        let retriedRequest = try rebuildAuthorizedRequest(from: originalRequest)
+        let (responseData, response): (Data, URLResponse)
+
+        do {
+            (responseData, response) = try await session.upload(for: retriedRequest, from: data)
+        } catch {
+            throw HTTPClientError.networkError(error)
+        }
+
+        onProgress?(1.0)
+        try validate(response: response, data: responseData)
+
+        do {
+            return try decoder.decode(T.self, from: responseData)
+        } catch {
+            throw HTTPClientError.decodingFailed
+        }
+    }
+
+    private func rebuildAuthorizedRequest(from request: URLRequest) throws -> URLRequest {
+        guard let token = authToken, !token.isEmpty else {
+            throw HTTPClientError.notAuthenticated
+        }
+
+        var rebuiltRequest = request
+        rebuiltRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        return rebuiltRequest
+    }
+
+    private func shouldRefreshAuth(response: URLResponse, data: Data) -> Bool {
+        guard let httpResponse = response as? HTTPURLResponse else {
+            return false
+        }
+
+        let statusCode = httpResponse.statusCode
+        if statusCode == 401 || statusCode == 403 {
+            return true
+        }
+
+        guard statusCode == 404 else {
+            return false
+        }
+
+        let message = String(data: data, encoding: .utf8)?.lowercased() ?? ""
+        return message.contains("tokenexpirederror")
+            || message.contains("jwt expired")
+            || message.contains("expired token")
+            || message.contains("expired")
     }
 
     /// Erstellt den Multipart-Form-Data-Body.

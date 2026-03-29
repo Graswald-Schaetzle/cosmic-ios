@@ -17,8 +17,11 @@ struct RoomCaptureViewRepresentable: UIViewRepresentable {
 /// Haupt-Scan-View – eingebettet in ContentView.
 /// Zeigt RoomCaptureView auf LiDAR-Geräten; auf anderen einen Fallback-Hinweis.
 struct ARMeshScannerView: View {
+    var showsDismissButton: Bool = false
+
     @StateObject private var viewModel = ScanViewModel()
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
     @State private var showErrorAlert = false
 
     var body: some View {
@@ -42,7 +45,7 @@ struct ARMeshScannerView: View {
                 .allowsHitTesting(false)
 
             VStack(spacing: 0) {
-                statusHeader
+                topBar
                     .padding(.top, 12)
                     .padding(.horizontal, 16)
 
@@ -69,6 +72,15 @@ struct ARMeshScannerView: View {
 
     private var lidarUnavailableView: some View {
         VStack(spacing: 20) {
+            if showsDismissButton {
+                HStack {
+                    Spacer()
+                    dismissButton
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 12)
+            }
+
             Image(systemName: "sensor.tag.radiowaves.forward.fill")
                 .font(.system(size: 64))
                 .foregroundStyle(.secondary)
@@ -85,6 +97,16 @@ struct ARMeshScannerView: View {
 
     // MARK: - Status Header
 
+    private var topBar: some View {
+        HStack(spacing: 12) {
+            if showsDismissButton {
+                dismissButton
+            }
+
+            statusHeader
+        }
+    }
+
     private var statusHeader: some View {
         HStack {
             scanStateIndicator
@@ -93,6 +115,19 @@ struct ARMeshScannerView: View {
         }
         .padding(12)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+    }
+
+    private var dismissButton: some View {
+        Button {
+            dismiss()
+        } label: {
+            Image(systemName: "xmark")
+                .font(.headline.weight(.semibold))
+                .foregroundStyle(.primary)
+                .frame(width: 42, height: 42)
+                .background(.ultraThinMaterial, in: Circle())
+        }
+        .buttonStyle(.plain)
     }
 
     private var scanStateIndicator: some View {

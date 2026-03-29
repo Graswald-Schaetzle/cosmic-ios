@@ -49,6 +49,7 @@ enum AuthError: LocalizedError {
     case networkError(String)
     case backendExchangeFailed
     case notAuthenticated
+    case sessionRefreshFailed
 
     var errorDescription: String? {
         switch self {
@@ -60,6 +61,8 @@ enum AuthError: LocalizedError {
             return "Backend-Authentifizierung fehlgeschlagen."
         case .notAuthenticated:
             return "Nicht eingeloggt."
+        case .sessionRefreshFailed:
+            return "Die Sitzung konnte nicht erneuert werden."
         }
     }
 }
@@ -83,6 +86,7 @@ final class AuthService: ObservableObject {
     @Published var isAuthenticated: Bool = false
 
     private let session = URLSession.shared
+    private var ongoingRefreshTask: Task<Void, Error>?
 
     private init() {}
 
@@ -109,17 +113,43 @@ final class AuthService: ObservableObject {
     /// Called at app start to restore a previous session without requiring re-login.
     func restoreSession() async {
         guard let supabaseUserId = KeychainService.get(KeychainKey.supabaseUserId),
-              let backendToken = KeychainService.get(KeychainKey.backendToken),
-              !supabaseUserId.isEmpty,
-              !backendToken.isEmpty else {
+              !supabaseUserId.isEmpty else {
             return
         }
+
+        let hasBackendToken = !(KeychainService.get(KeychainKey.backendToken) ?? "").isEmpty
+        let hasRefreshFallback =
+            !(KeychainService.get(KeychainKey.backendRefreshToken) ?? "").isEmpty ||
+            !(KeychainService.get(KeychainKey.supabaseRefreshToken) ?? "").isEmpty
+
+        guard hasBackendToken || hasRefreshFallback else { return }
+
         isAuthenticated = true
     }
 
     /// The backend JWT to use in Authorization headers.
     var backendToken: String? {
         KeychainService.get(KeychainKey.backendToken)
+    }
+
+    func refreshSessionIfNeeded(force: Bool = false) async throws {
+        if !force, let backendToken, !backendToken.isEmpty {
+            isAuthenticated = true
+            return
+        }
+
+        if let ongoingRefreshTask {
+            try await ongoingRefreshTask.value
+            return
+        }
+
+        let task = Task { @MainActor in
+            try await self.performSessionRefresh()
+        }
+        ongoingRefreshTask = task
+
+        defer { ongoingRefreshTask = nil }
+        try await task.value
     }
 
     // MARK: - Private
@@ -176,6 +206,81 @@ final class AuthService: ObservableObject {
         }
         if let refresh = loginResponse.user.refreshToken {
             KeychainService.set(refresh, for: KeychainKey.backendRefreshToken)
+        }
+    }
+
+    private func performSessionRefresh() async throws {
+        guard let supabaseUserId = KeychainService.get(KeychainKey.supabaseUserId),
+              !supabaseUserId.isEmpty else {
+            signOut()
+            throw AuthError.notAuthenticated
+        }
+
+        if let backendRefreshToken = KeychainService.get(KeychainKey.backendRefreshToken),
+           !backendRefreshToken.isEmpty {
+            do {
+                try await refreshBackendAccessToken(using: backendRefreshToken)
+                isAuthenticated = true
+                return
+            } catch {
+                // Fall back to a fresh backend exchange below.
+            }
+        }
+
+        do {
+            try await exchangeWithBackend(supabaseUserId: supabaseUserId)
+            isAuthenticated = true
+        } catch {
+            signOut()
+            throw AuthError.sessionRefreshFailed
+        }
+    }
+
+    private func refreshBackendAccessToken(using refreshToken: String) async throws {
+        guard let url = URL(string: "\(Config.backendBaseURL)/auth/refresh") else {
+            throw AuthError.networkError("Ungültige Backend-URL")
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(
+            withJSONObject: ["refresh_token": refreshToken]
+        )
+
+        let (data, response) = try await session.data(for: request)
+
+        guard let http = response as? HTTPURLResponse,
+              (200...299).contains(http.statusCode) else {
+            throw AuthError.sessionRefreshFailed
+        }
+
+        let jsonObject = try JSONSerialization.jsonObject(with: data)
+        guard let json = jsonObject as? [String: Any] else {
+            throw AuthError.sessionRefreshFailed
+        }
+
+        let userPayload = json["user"] as? [String: Any]
+        let accessToken =
+            (json["access_token"] as? String) ??
+            (json["accessToken"] as? String) ??
+            (userPayload?["access_token"] as? String) ??
+            (userPayload?["accessToken"] as? String)
+
+        let nextRefreshToken =
+            (json["refresh_token"] as? String) ??
+            (json["refreshToken"] as? String) ??
+            (userPayload?["refresh_token"] as? String) ??
+            (userPayload?["refreshToken"] as? String)
+
+        guard let accessToken, !accessToken.isEmpty else {
+            throw AuthError.sessionRefreshFailed
+        }
+
+        KeychainService.set(accessToken, for: KeychainKey.backendToken)
+
+        if let nextRefreshToken, !nextRefreshToken.isEmpty {
+            KeychainService.set(nextRefreshToken, for: KeychainKey.backendRefreshToken)
         }
     }
 }

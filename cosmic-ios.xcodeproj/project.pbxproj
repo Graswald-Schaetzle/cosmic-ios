@@ -8,6 +8,7 @@
 
 /* Begin PBXFileReference section */
 		539AC9662F715519001FFEC0 /* cosmic-ios.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "cosmic-ios.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		539AC9DA2F79579E001FFEC0 /* cosmic-ios.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "cosmic-ios.xcodeproj"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -42,6 +43,11 @@
 			children = (
 				539AC9662F715519001FFEC0 /* cosmic-ios.app */,
 			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		539AC9EA2F79579E001FFEC0 /* Products */ = {
+			isa = PBXGroup;
 			name = Products;
 			sourceTree = "<group>";
 		};
@@ -97,6 +103,12 @@
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 539AC9672F715519001FFEC0 /* Products */;
 			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = 539AC9EA2F79579E001FFEC0 /* Products */;
+					ProjectRef = 539AC9DA2F79579E001FFEC0 /* cosmic-ios.xcodeproj */;
+				},
+			);
 			projectRoot = "";
 			targets = (
 				539AC9652F715519001FFEC0 /* cosmic-ios */,
@@ -254,6 +266,9 @@
 				DEVELOPMENT_TEAM = N6X5SRYYH3;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_MATTERPORT_MODEL_ID = "";
+				INFOPLIST_KEY_MATTERPORT_SDK_KEY = "";
+				INFOPLIST_KEY_MATTERPORT_SHOWCASE_URL = "";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Cosmic nutzt die Kamera für den LiDAR-3D-Scan deiner Räume.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Das Mikrofon wird für die sprachgestützte Raumerfassung mit RoomPlan benötigt.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -288,6 +303,9 @@
 				DEVELOPMENT_TEAM = N6X5SRYYH3;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_MATTERPORT_MODEL_ID = "";
+				INFOPLIST_KEY_MATTERPORT_SDK_KEY = "";
+				INFOPLIST_KEY_MATTERPORT_SHOWCASE_URL = "";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Cosmic nutzt die Kamera für den LiDAR-3D-Scan deiner Räume.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Das Mikrofon wird für die sprachgestützte Raumerfassung mit RoomPlan benötigt.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
