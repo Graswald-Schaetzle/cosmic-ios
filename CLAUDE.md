@@ -1,79 +1,99 @@
 # Cosmic iOS – Produkt-Kontext für AI Agents
 
+Antworte dem Nutzer immer auf Deutsch (Code, Commit-Messages und Bezeichner bleiben englisch).
+
 ## Was ist Cosmic?
 
 Cosmic ist eine **Spatial-Data-Plattform für wohnbezogene Services**.
 
-Der Kern: Ein User scannt einmalig sein Zuhause / Gebäudeinneres mit dem iPhone.
-Daraus entsteht ein strukturiertes 3D-Modell mit Objekt- und Flächenerkennung –
-was wo steht, wie groß Räume sind, Wandflächen, Deckenhöhen etc.
+Der Kern: Ein User erfasst einmalig sein Zuhause mit dem iPhone. Daraus entsteht ein
+3D-Raum (Gaussian Splat), der in der Web-App mit Aufgaben, Listen, Dokumenten, Tags und
+weiteren Services verknüpft wird. Zentrales Domänenobjekt ist der **Space** mit Floors und Rooms.
 
-Dieses Modell ist die **dauerhafte Datenbasis**, auf der beliebige Services aufgebaut werden.
+Dieses Modell ist die **dauerhafte Datenbasis**, auf der beliebige Services aufgebaut werden:
+KI-gestützte Angebote (Maler, Handwerker) aus Raumdaten, virtuelle Visualisierung von Möbeln und
+Farben, Markierungen direkt im 3D-Modell. Der User erfasst Rauminfos nur einmal.
 
 ---
 
 ## Rolle der iOS App
 
-Die iOS App ist der **Einstiegspunkt der gesamten Plattform** – ohne Scan kein Service.
+Die iOS App ist der **Einstiegspunkt der gesamten Plattform** – ohne Aufnahme kein Service.
 
-Sie ist verantwortlich für:
-1. **Erfassung**: LiDAR-gestützter 3D-Scan der Räumlichkeiten (RoomPlan / ARKit)
-2. **On-Device-Verarbeitung**: 3D-Modell wird direkt auf dem iPhone generiert (kein Cloud-Upload für die Rekonstruktion nötig)
-3. **Export**: Fertiges Modell als `.usdz`-Datei
-4. **Upload**: Direkt ans cosmic-backend → Supabase Storage / GCS
-5. **Verknüpfung**: Backend legt einen "Space"-Eintrag in der DB an mit Remote-URL → Web-App kann das Modell anzeigen
+## Aktuelle Richtung: Raum-für-Raum-Capture mit SpAItial Echo-3
 
----
+**Vor jeder Arbeit am Scan zuerst `docs/echo3-capture-plan.md` lesen.** Dort stehen Ablauf,
+Bundle-Format, Entscheidungen, Reihenfolge und offene Punkte.
 
-## Zwei 3D-Pipelines
+Kurzfassung:
+- Die App nimmt jeden Raum als eigenes Capture auf (JPEG-Keyframes mit ARKit-Posen und
+  Kalibrierung, als ZIP) und zeichnet parallel LiDAR-Mesh und Tiefe auf.
+- Das Backend schickt das ZIP an die Echo-3-API von SpAItial und importiert den fertigen Splat
+  (`.spz`) in den Space. Der API-Key liegt nur im Backend, nie in der App.
+- Am Ende eines Raums markiert der User die Tür zum nächsten Raum; darüber werden die Räume
+  später automatisch zusammengefügt.
+- Capture-Kern und LiDAR-Netz kommen aus dem Open-Source-Prototyp
+  `spaitial-ai/spaitial-capture-prototype` (MIT-0).
 
-| | On-Device (iOS App) | Cloud-Pipeline (separates Repo) |
+## Stand im Code (vor dem Umbau)
+
+| Datei | Inhalt | Zukunft |
 |---|---|---|
-| Gerät | iPhone mit LiDAR | Alle Geräte (Fallback) |
-| Technologie | RoomPlan / ARKit LiDAR | Gaussian Splatting / Photogrammetry |
-| Output | `.usdz` lokal | 3D-Modell via Backend |
-| Vorteil | Schnell, offline, präzise | Geräteunabhängig |
+| `ARMeshScannerView.swift`, `ScanViewModel.swift`, `ARTrackingService.swift` | Scan mit RoomPlan, Export `.usdz` | wird durch den neuen Capture-Ablauf ersetzt |
+| `ARMeshVisualizationView.swift` | Drahtgitter-Overlay aus LiDAR-Mesh-Ankern | wird durch das Coverage-Netz des Prototyps ersetzt |
+| `LiDARCaptureService.swift` | Frames + `transforms.json` (Nerfstudio) | falsches Format für Echo-3, wird ersetzt |
+| `ScanPackager.swift` | ZIP ohne Kompression | wiederverwendbar |
+| `ReconstructionJobService.swift` | Upload in die alte RunPod/GCS-Pipeline | nicht mehr verwenden |
+| `SpatialUploadService.swift`, `SpatialScanModels.swift` | RoomPlan-Objekte und -Flächen ans Backend | bleibt vorerst |
+| `CosmicHomeView.swift`, `MenuService.swift`, `SpaceService.swift` | natives Home-Menü und Spaces | bleibt |
+| `MatterportWebView.swift` | Matterport-Ansicht | kein neuer Code dafür |
+
+Der Quellcode liegt in `cosmic-ios/` (flach). Die Dateien unter `App/` sind ältere Kopien und
+gehören nicht zum Xcode-Target.
+
+**Nicht mehr verwenden**: die RunPod-3D-Pipeline und der Upload nach GCS. **Matterport wird
+ersetzt**: kein neuer Code und keine neuen Features dafür.
 
 ---
 
-## Was mit dem Modell passiert (Downstream)
-
-Einmal erfasst, ermöglicht das Modell u.a.:
-
-- **KI-gestützte Angebote** (z.B. Maler, Handwerker): KI liest Raumdaten direkt aus der DB
-  (Wandflächen, Raummaße etc.) und fragt den User nur noch das, was fehlt (Wunschfarbe, Termin).
-- **Virtuelle Visualisierung**: Möbel, Farben, Teppiche, Objekte im 3D-Modell platzieren
-  und vorab visualisieren – der User sieht, was er kauft und wie es wirkt.
-- **Wunschmarkierungen im 3D-Modell**: z.B. Wände direkt im Modell für einen Auftrag markieren.
-- **Alle erdenklichen wohnbezogenen Services** – das Modell ist die universelle Datenbasis.
-
-**Kernwert**: Der User muss Rauminfos nur einmal erfassen. Alle Services danach
-greifen auf dieselbe Datenbasis zu – kein wiederholtes Ausmessen, Fotos schicken, erklären.
-
----
-
-## Gesamtarchitektur (Überblick)
+## Gesamtarchitektur
 
 ```
-iOS App (dieser Repo)
-  └── LiDAR Scan → .usdz → Upload
+iOS App (dieses Repo)
+  └── Capture pro Raum (ZIP) + LiDAR-Mesh → Upload
           ↓
-cosmic-backend (Node.js / Supabase)
-  └── Space-Eintrag in DB + Datei in GCS/Supabase Storage
+cosmic-backend (Node.js/Express auf Google Cloud Run, Supabase für DB und Storage)
+  └── schickt das ZIP an SpAItial Echo-3, importiert .spz + collision.glb in den Space
           ↓
-cosmic-webapp-frontend (React + Matterport SDK)
-  └── 3D-Viewer, Service-Buchung, KI-Chat, Visualisierung
+cosmic-webapp-frontend (React, Splat-Viewer mit three + @sparkjsdev/spark, auf Vercel)
+  └── 3D-Viewer, Aufgaben, Dokumente, Tags, Minimap
 ```
+
+- Repos in der GitHub-Organisation `Graswald-Schaetzle`: `cosmic-ios`, `cosmic-backend`,
+  `cosmic-webapp-frontend`.
+- Backend-URL: siehe `Config.swift` (`backendBaseURL`).
+- Supabase Storage: Bucket `splats` (fertige Splats und Kollisions-Meshes), Bucket `captures`
+  (privat, hochgeladene Capture-ZIPs).
 
 ---
 
 ## Technische Rahmenbedingungen
 
-- Deployment Target: **iOS 17.0** (SwiftData + RoomPlan)
+- Deployment Target: **iOS 17.0**, Swift 5. Der Echo-3-Prototyp verlangt iOS 18 und Swift 6;
+  die Anhebung ist vorgeschlagen, aber noch nicht bestätigt.
 - Architektur: **MVVM** (SwiftUI, kein Storyboard)
 - Async: **async/await** (kein Completion Handler)
 - Persistenz lokal: **SwiftData**
 - Backend: REST API via `cosmic-backend`
-- Auth: Supabase Auth / JWT (Token im Keychain)
+- Auth: Login über das Backend / Supabase, Token im Keychain
+- Kamera und LiDAR laufen nur auf einem echten iPhone; im Simulator laufen nur Unit-Tests.
 
-Für detaillierte Coding-Regeln: siehe `agent-rules.md` im selben Verzeichnis.
+## Geheimnisse
+
+Keine Keys, Passwörter oder Tokens in Dateien, Commits oder Chats schreiben. Der SpAItial-API-Key
+und das Webhook-Secret liegen als `SPAITIAL_API_KEY` und `SPAITIAL_WEBHOOK_SECRET` in den
+GitHub-Secrets von `cosmic-backend` und lokal in dessen `.env`.
+
+Für detaillierte Coding-Regeln: siehe `agent-rules.md` im selben Verzeichnis. Die Abschnitte
+dort zu RoomPlan-Export und direktem `.usdz`-Upload beschreiben den alten Weg; maßgeblich für
+den Scan ist `docs/echo3-capture-plan.md`.
