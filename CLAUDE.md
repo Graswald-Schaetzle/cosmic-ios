@@ -35,7 +35,21 @@ Kurzfassung:
 - Capture-Kern und LiDAR-Netz kommen aus dem Open-Source-Prototyp
   `spaitial-ai/spaitial-capture-prototype` (MIT-0).
 
-## Stand im Code (vor dem Umbau)
+## Stand im Code
+
+Neu (Schritt 3 des Plans, ein Raum):
+
+| Ort | Inhalt |
+|---|---|
+| `Packages/CosmicCapture/` | Lokales Swift-Paket (Swift 6, iOS 18) mit dem Capture-Kern und der Full-Guidance des Prototyps samt Tests. Cosmic-Erweiterungen in `Sources/CosmicCapture/Cosmic/`: LiDAR-Mesh (`lidar/mesh.glb`), Tiefe pro Frame (`lidar/depth/`), `CosmicCaptureStore`, `CosmicRoomCaptureView`. |
+| `RoomCapturesView.swift` | Liste der lokalen Captures mit Upload in den gewählten Space (vorher Kostenabfrage), Status und ZIP-Export. |
+| `RoomCaptureUploadService.swift` | Upload über `/room-captures` im Backend: Capture anmelden, ZIP und LiDAR-Mesh direkt in den Storage laden, Echo-3 starten, Status abfragen. Zustand pro Capture in `UserDefaults`. Noch nicht mit einem echten Capture getestet. |
+| `CosmicHomeView.swift` | "Start Scan" öffnet `CosmicRoomCaptureView`, "History" die Capture-Liste. |
+
+Paket-Tests: `xcodebuild -scheme CosmicCapture -destination 'platform=iOS Simulator,name=<iPhone>' test`
+im Ordner `Packages/CosmicCapture`. Die Texte im Capture-Ablauf und in der Capture-Liste sind englisch (so entschieden).
+
+Alt (nicht mehr aus der App erreichbar, wird entfernt, sobald der Upload mit einem echten Capture bestätigt ist):
 
 | Datei | Inhalt | Zukunft |
 |---|---|---|
@@ -79,8 +93,8 @@ cosmic-webapp-frontend (React, Splat-Viewer mit three + @sparkjsdev/spark, auf V
 
 ## Technische Rahmenbedingungen
 
-- Deployment Target: **iOS 17.0**, Swift 5. Der Echo-3-Prototyp verlangt iOS 18 und Swift 6;
-  die Anhebung ist vorgeschlagen, aber noch nicht bestätigt.
+- Deployment Target: **iOS 18.0** (bestätigt am 11.11.2026). Das App-Target bleibt Swift 5;
+  das Paket `Packages/CosmicCapture` ist Swift 6.
 - Architektur: **MVVM** (SwiftUI, kein Storyboard)
 - Async: **async/await** (kein Completion Handler)
 - Persistenz lokal: **SwiftData**

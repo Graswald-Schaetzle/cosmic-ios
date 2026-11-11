@@ -1,4 +1,5 @@
 import SwiftUI
+import CosmicCapture
 
 private enum HomeSheet: String, Identifiable {
     case history
@@ -50,6 +51,7 @@ struct CosmicHomeView: View {
 
     @State private var activeSheet: HomeSheet?
     @State private var showScanner = false
+    @State private var captureStore = CosmicCaptureStore()
     @State private var showMorePanel = false
     @State private var viewerIsLoading = true
     @State private var viewerErrorMessage: String?
@@ -80,7 +82,7 @@ struct CosmicHomeView: View {
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
             case .history:
-                ScanHistoryView()
+                RoomCapturesView(store: captureStore, space: selectedSpace)
             case .spaces:
                 SpacesSheetView(
                     spaces: spaces,
@@ -100,7 +102,7 @@ struct CosmicHomeView: View {
             }
         }
         .fullScreenCover(isPresented: $showScanner) {
-            ARMeshScannerView(showsDismissButton: true)
+            CosmicRoomCaptureView(store: captureStore)
         }
         .task {
             await loadHomeState()

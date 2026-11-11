@@ -7,10 +7,13 @@
 
 import SwiftUI
 import SwiftData
+import CosmicCapture
 
 @main
 struct cosmic_iosApp: App {
 
+    // Lets the capture flow lock the interface orientation during a scan.
+    @UIApplicationDelegateAdaptor(CaptureAppDelegate.self) private var captureAppDelegate
     @StateObject private var authService = AuthService.shared
 
     var body: some Scene {

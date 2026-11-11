@@ -1,6 +1,7 @@
 # Plan: Raum-für-Raum-Capture mit SpAItial Echo-3
 
-Stand: 11.11.2026. Noch nichts davon ist umgesetzt. Dieses Dokument ist die Übergabe aus der
+Stand: 11.11.2026. Umgesetzt ist Schritt 3 (iOS, ein Raum) bis zum lokal gespeicherten Capture
+mit LiDAR-Daten, siehe "Umsetzungsstand". Alles andere ist offen. Dieses Dokument ist die Übergabe aus der
 Planungs-Session, damit eine neue (lokale) Session ohne Vorwissen weiterarbeiten kann.
 
 ## Ziel
@@ -191,6 +192,32 @@ ARKit-Konfiguration wie in der "Full"-Variante des Prototyps: `sceneReconstructi
 4. **iOS, mehrere Räume**: Raum-für-Raum-Ablauf, Stockwerke, Tür-Verknüpfung.
 5. **Web-Viewer**: mehrere Raum-Splats pro Space.
 
+## Umsetzungsstand
+
+- **Schritt 3, iOS ein Raum** (Branch `feature/echo3-single-room-capture`): Der Prototyp
+  (Stand `2d89e6f`, Full-Variante) liegt als lokales Paket in `Packages/CosmicCapture`.
+  Ein Capture landet unter `Documents/Captures/<id>/` mit `bundle/` (Echo-3-Vertrag,
+  unverändert) und `lidar/` (`mesh.glb` nach Klassifikation gruppiert, `depth/` und
+  `confidence/` als PNG pro gespeichertem Frame, `metadata.json`). `lidar/` wird nie ins ZIP
+  gepackt. Die Capture-Liste exportiert das ZIP über das Teilen-Menü; damit lässt sich
+  Schritt 1 auch mit der Cosmic-App statt mit dem Prototyp durchführen.
+- Geprüft: 255 Paket-Tests im Simulator, App-Build für Simulator und Gerät. **Nicht geprüft**:
+  der Scan auf einem echten iPhone (Kamera, LiDAR-Netz, gespeichertes Mesh und Tiefe).
+- Der Capture-Ablauf nutzt den Glas-Look der App (immer dunkel, halbtransparente Panels mit
+  32 pt Rundung, weiße Kapsel-Buttons, Akzent `#FFA600`). Die Texte bleiben englisch.
+- **Schritt 2, Backend**: Endpunkte `/room-captures` (Upload-URL, Start bei Echo-3, Webhook,
+  Polling, Import des Splats) und Migration `20261111000001_room_captures.sql` sind
+  geschrieben, die Migration ist auf Supabase angewendet. Beschreibung in
+  `cosmic-backend/docs/room-captures.md`. Das Backend ist auf Cloud Run deployt. Noch kein
+  echter Echo-3-Job gelaufen.
+- **Upload aus der App**: `RoomCaptureUploadService` und die Capture-Liste laden ein Capture in
+  den gewählten Space (Kostenabfrage und Bestätigung, ZIP und LiDAR-Mesh direkt in den Bucket
+  `captures`, Start bei Echo-3, Statusabfrage alle 30 s bei offener Liste). Der Upload läuft
+  im Vordergrund; Upload im Hintergrund und Push-Nachricht fehlen. Nur gebaut, **nicht mit
+  einem echten Capture getestet**.
+- Offen in Schritt 3: Test auf dem iPhone, danach Entfernen des alten RoomPlan-Scans.
+- iOS 18 als Mindestversion ist bestätigt.
+
 ## Offene Punkte
 
 - **Koordinatensystem der Ausgabe**: Die Doku sagt nicht, ob Echo-3 den Splat im
@@ -198,13 +225,14 @@ ARKit-Konfiguration wie in der "Full"-Variante des Prototyps: `sceneReconstructi
   werden die Räume über LiDAR-Mesh und Türanker ausgerichtet.
 - **Antwortformate**: Die Antwort des Status-Endpunkts bei Erfolg und die Signatur der
   Webhooks stehen nicht in der Doku. Beim ersten echten Job mitschreiben.
-- **Upload-Größe**: Ein Raum ergibt geschätzt 200 bis 600 MB. Ob der Supabase-Tarif so große
-  Dateien zulässt, ist ungeprüft; die größte Datei bisher hat 13 MB.
-- **Guthaben**: Am 11.11.2026 waren 1206 Credits auf dem Konto, genug für ein Capture mit
-  höchstens 306 Frames. Vor dem Test aufladen oder den Scan kurz halten.
+- **Upload-Größe**: Ein Raum ergibt geschätzt 200 bis 600 MB. Die Organisation hat den
+  Pro-Tarif, der Bucket `captures` erlaubt 1 GB pro Datei. Das globale Dateigrößen-Limit des
+  Projekts (Supabase: Storage > Settings, Standard 50 MB) ist ungeprüft und muss mindestens
+  1 GB betragen; die größte Datei bisher hat 13 MB.
+- **Guthaben**: Am 11.11.2026 abends 7906 Credits. Ein Capture kostet 900 Credits plus
+  1 Credit pro Frame.
 - **Tracking zwischen Räumen**: Ob ARKit das Tracking beim Gang durch die Tür zuverlässig
   hält, muss mit zwei echten Räumen getestet werden.
-- **iOS 18 als Mindestversion**: noch zu bestätigen.
 
 ## Lokal arbeiten
 

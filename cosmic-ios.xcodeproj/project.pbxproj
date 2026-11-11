@@ -19,11 +19,16 @@
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
+/* Begin PBXBuildFile section */
+		C05C0A012FB20000001FFEC0 /* CosmicCapture in Frameworks */ = {isa = PBXBuildFile; productRef = C05C0A022FB20000001FFEC0 /* CosmicCapture */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFrameworksBuildPhase section */
 		539AC9632F715519001FFEC0 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C05C0A012FB20000001FFEC0 /* CosmicCapture in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -71,6 +76,7 @@
 			);
 			name = "cosmic-ios";
 			packageProductDependencies = (
+				C05C0A022FB20000001FFEC0 /* CosmicCapture */,
 			);
 			productName = "cosmic-ios";
 			productReference = 539AC9662F715519001FFEC0 /* cosmic-ios.app */;
@@ -99,6 +105,9 @@
 				Base,
 			);
 			mainGroup = 539AC95D2F715519001FFEC0;
+			packageReferences = (
+				C05C0A032FB20000001FFEC0 /* XCLocalSwiftPackageReference "Packages/CosmicCapture" */,
+			);
 			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 539AC9672F715519001FFEC0 /* Products */;
@@ -135,6 +144,20 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		C05C0A032FB20000001FFEC0 /* XCLocalSwiftPackageReference "Packages/CosmicCapture" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/CosmicCapture;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		C05C0A022FB20000001FFEC0 /* CosmicCapture */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = CosmicCapture;
+		};
+/* End XCSwiftPackageProductDependency section */
 
 /* Begin XCBuildConfiguration section */
 		539AC96F2F71551A001FFEC0 /* Debug */ = {
@@ -189,7 +212,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -246,7 +269,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
@@ -269,7 +292,7 @@
 				INFOPLIST_KEY_MATTERPORT_MODEL_ID = "";
 				INFOPLIST_KEY_MATTERPORT_SDK_KEY = "";
 				INFOPLIST_KEY_MATTERPORT_SHOWCASE_URL = "";
-				INFOPLIST_KEY_NSCameraUsageDescription = "Cosmic nutzt die Kamera für den LiDAR-3D-Scan deiner Räume.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Cosmic nutzt die Kamera, um deine Räume für das 3D-Modell aufzunehmen.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Das Mikrofon wird für die sprachgestützte Raumerfassung mit RoomPlan benötigt.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -306,7 +329,7 @@
 				INFOPLIST_KEY_MATTERPORT_MODEL_ID = "";
 				INFOPLIST_KEY_MATTERPORT_SDK_KEY = "";
 				INFOPLIST_KEY_MATTERPORT_SHOWCASE_URL = "";
-				INFOPLIST_KEY_NSCameraUsageDescription = "Cosmic nutzt die Kamera für den LiDAR-3D-Scan deiner Räume.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Cosmic nutzt die Kamera, um deine Räume für das 3D-Modell aufzunehmen.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Das Mikrofon wird für die sprachgestützte Raumerfassung mit RoomPlan benötigt.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
