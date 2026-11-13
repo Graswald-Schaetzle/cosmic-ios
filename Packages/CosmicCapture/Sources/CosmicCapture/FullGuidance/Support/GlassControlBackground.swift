@@ -1,25 +1,13 @@
 import SwiftUI
 
-/// Native glass for floating controls over the camera, with an opaque
-/// fallback for Reduce Transparency and Increase Contrast.
+/// Native Liquid Glass for floating controls over the camera. Reduce
+/// Transparency and Increase Contrast are handled by the system material.
 private struct GlassControlBackground<S: Shape>: ViewModifier {
     let shape: S
     var tint: Color?
 
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    @Environment(\.colorSchemeContrast) private var contrast
-
     func body(content: Content) -> some View {
-        if reduceTransparency || contrast == .increased {
-            content
-                .background(Theme.card, in: shape)
-                .overlay(shape.stroke(Theme.border, lineWidth: 1))
-        } else if #available(iOS 26.0, *) {
-            content.glassEffect(.regular.tint(tint).interactive(), in: shape)
-        } else {
-            // Pre-26 native equivalent. Still a system material, not a hand-rolled blur.
-            content.background(tint == nil ? .thinMaterial : .regularMaterial, in: shape)
-        }
+        content.glassEffect(.regular.tint(tint).interactive(), in: shape)
     }
 }
 

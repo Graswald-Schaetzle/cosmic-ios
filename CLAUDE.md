@@ -37,13 +37,20 @@ Kurzfassung:
 - Capture-Kern und LiDAR-Netz kommen aus dem Open-Source-Prototyp
   `spaitial-ai/spaitial-capture-prototype` (MIT-0).
 
+## Redesign der App (Liquid Glass)
+
+Die App-Oberfläche wird nach `docs/ios-redesign-plan.md` neu aufgebaut: iOS 26, Liquid Glass aus SwiftUI, neutrale
+Glasflächen, ein matter Silber-Akzent (`CosmicDesign` in `Packages/CosmicCapture/Sources/CosmicCapture/Cosmic/`),
+**alle UI-Texte englisch**. Neue Screens nutzen `CosmicDesign`, `.cosmicPrimary`/`.cosmicSecondary` und
+`cosmicGlassPanel()` statt eigener Materialien oder Farben.
+
 ## Stand im Code
 
 Neu (Schritt 3 des Plans, ein Raum):
 
 | Ort | Inhalt |
 |---|---|
-| `Packages/CosmicCapture/` | Lokales Swift-Paket (Swift 6, iOS 18) mit dem Capture-Kern und der Full-Guidance des Prototyps samt Tests. Cosmic-Erweiterungen in `Sources/CosmicCapture/Cosmic/`: LiDAR-Mesh (`lidar/mesh.glb`), Tiefe pro Frame (`lidar/depth/`), `CosmicCaptureStore`, `CosmicRoomCaptureView`. |
+| `Packages/CosmicCapture/` | Lokales Swift-Paket (Swift 6, iOS 26) mit dem Capture-Kern und der Full-Guidance des Prototyps samt Tests. Cosmic-Erweiterungen in `Sources/CosmicCapture/Cosmic/`: LiDAR-Mesh (`lidar/mesh.glb`), Tiefe pro Frame (`lidar/depth/`), `CosmicCaptureStore`, `CosmicRoomCaptureView`. |
 | `RoomCapturesView.swift` | Liste der lokalen Captures mit Upload in den gewählten Space (vorher Kostenabfrage), Status und ZIP-Export. |
 | `RoomCaptureUploadService.swift` | Upload über `/room-captures` im Backend: Capture anmelden, ZIP und LiDAR-Mesh direkt in den Storage laden, Echo-3 starten, Status abfragen. Zustand pro Capture in `UserDefaults`. Noch nicht mit einem echten Capture getestet. |
 | `CosmicHomeView.swift` | "Start Scan" öffnet `CosmicRoomCaptureView`, "History" die Capture-Liste. |
@@ -95,7 +102,7 @@ cosmic-webapp-frontend (React, Splat-Viewer mit three + @sparkjsdev/spark, auf V
 
 ## Technische Rahmenbedingungen
 
-- Deployment Target: **iOS 18.0** (bestätigt am 11.11.2026). Das App-Target bleibt Swift 5;
+- Deployment Target: **iOS 26.0** (am 13.11.2026 für Liquid Glass angehoben). Das App-Target bleibt Swift 5;
   das Paket `Packages/CosmicCapture` ist Swift 6.
 - Architektur: **MVVM** (SwiftUI, kein Storyboard)
 - Async: **async/await** (kein Completion Handler)

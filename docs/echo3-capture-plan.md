@@ -125,8 +125,7 @@ Diese Regeln gehören zum Echo-3-Vertrag und stecken fertig im Prototyp
 - **Keine manuelle Markierung von Fenstern, Spiegeln, Türen als Objekte.** Das übernimmt
   später die KI-Objekterkennung. Manuell markiert wird nur die Tür zum nächsten Raum.
 - **Der API-Key liegt nur im Backend**, nie in der App.
-- **Optik**: Glas-Look der Web-App (dunkle, halbtransparente Panels, große Rundungen,
-  Raum-Chips in Orange `#FFA600`).
+- **Optik**: Liquid Glass (iOS 26) mit mattem Silber-Akzent, siehe `docs/ios-redesign-plan.md`.
 
 ### Räume verknüpfen
 
@@ -203,8 +202,8 @@ ARKit-Konfiguration wie in der "Full"-Variante des Prototyps: `sceneReconstructi
   Schritt 1 auch mit der Cosmic-App statt mit dem Prototyp durchführen.
 - Geprüft: 255 Paket-Tests im Simulator, App-Build für Simulator und Gerät. **Nicht geprüft**:
   der Scan auf einem echten iPhone (Kamera, LiDAR-Netz, gespeichertes Mesh und Tiefe).
-- Der Capture-Ablauf nutzt den Glas-Look der App (immer dunkel, halbtransparente Panels mit
-  32 pt Rundung, weiße Kapsel-Buttons, Akzent `#FFA600`). Die Texte bleiben englisch.
+- Der Capture-Ablauf nutzt Liquid Glass (immer dunkel, 32 pt Rundung, Silber-Akzent aus `CosmicDesign`).
+  Die Texte bleiben englisch.
 - **Schritt 2, Backend**: Endpunkte `/room-captures` (Upload-URL, Start bei Echo-3, Webhook,
   Polling, Import des Splats) und Migration `20261111000001_room_captures.sql` sind
   geschrieben, die Migration ist auf Supabase angewendet. Beschreibung in
@@ -216,7 +215,7 @@ ARKit-Konfiguration wie in der "Full"-Variante des Prototyps: `sceneReconstructi
   im Vordergrund; Upload im Hintergrund und Push-Nachricht fehlen. Nur gebaut, **nicht mit
   einem echten Capture getestet**.
 - Offen in Schritt 3: Test auf dem iPhone, danach Entfernen des alten RoomPlan-Scans.
-- iOS 18 als Mindestversion ist bestätigt.
+- Mindestversion: am 13.11.2026 für das Liquid-Glass-Redesign auf iOS 26 angehoben (siehe `docs/ios-redesign-plan.md`).
 
 ## Mehrere Räume im Viewer und Neuaufnahme einzelner Räume
 

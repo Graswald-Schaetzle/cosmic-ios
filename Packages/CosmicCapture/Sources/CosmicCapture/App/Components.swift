@@ -39,34 +39,9 @@ extension View {
     }
 }
 
-/// The one dominant action on a screen.
-struct PrimaryActionButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.headline)
-            .foregroundStyle(Color.black)
-            // minHeight, not height: the label has to be free to grow with Dynamic Type.
-            .frame(maxWidth: .infinity, minHeight: 50)
-            .padding(.horizontal, 20)
-            .background(Color.white, in: Capsule())
-            .contentShape(Capsule())
-            .opacity(configuration.isPressed ? 0.85 : 1)
-    }
-}
-
-/// A quieter action that must not compete with the primary one.
-struct SecondaryActionButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(Theme.foreground)
-            .frame(maxWidth: .infinity, minHeight: Theme.minimumTapTarget)
-            .padding(.horizontal, 20)
-            .background(Theme.muted, in: Capsule())
-            .contentShape(Capsule())
-            .opacity(configuration.isPressed ? 0.6 : 1)
-    }
-}
+/// The capture flow uses the shared Cosmic button styles (see `CosmicDesign.swift`).
+typealias PrimaryActionButtonStyle = CosmicPrimaryButtonStyle
+typealias SecondaryActionButtonStyle = CosmicSecondaryButtonStyle
 
 struct LoadingButtonLabel: View {
     let title: String
@@ -156,20 +131,10 @@ struct CaptureThumbnailImage: View {
     }
 }
 
-/// Translucent circular chrome for buttons drawn over the camera feed, with an
-/// opaque fallback under Reduce Transparency and Increase Contrast.
+/// Liquid Glass behind controls drawn over the camera feed. Reduce
+/// Transparency and Increase Contrast are handled by the system material.
 struct CameraChromeBackground: View {
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    @Environment(\.colorSchemeContrast) private var contrast
-
     var body: some View {
-        if reduceTransparency || contrast == .increased {
-            Capsule()
-                .fill(Color.black.opacity(0.78))
-                .overlay(Capsule().stroke(.white.opacity(0.3), lineWidth: 1))
-        } else {
-            Capsule().fill(.ultraThinMaterial.opacity(0.9))
-                .overlay(Capsule().fill(.black.opacity(0.25)))
-        }
+        Color.clear.glassEffect(.regular, in: Capsule())
     }
 }
