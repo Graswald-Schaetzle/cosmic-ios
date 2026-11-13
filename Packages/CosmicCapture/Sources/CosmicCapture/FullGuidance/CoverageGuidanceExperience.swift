@@ -20,6 +20,9 @@ final class CoverageGuidanceExperience: CaptureGuidanceExperience {
     private(set) var completenessIssues: [CaptureFinishCompleteness.Issue] = []
 
     @ObservationIgnored private(set) weak var model: CaptureFlowModel?
+    /// Cosmic: the LiDAR mesh of the capture saved last, kept for the door
+    /// marking that follows the save.
+    @ObservationIgnored private(set) var lastFinalizedMesh: CaptureLidarMesh?
 
     /// The live card, layout lessons and finish review need a mesh.
     var supportsScanGuide: Bool { CaptureCoverageGuide.isSceneReconstructionSupported }
@@ -76,6 +79,7 @@ final class CoverageGuidanceExperience: CaptureGuidanceExperience {
     func captureDidFinalize(id: UUID) async {
         let anchors = Array(guide.meshAnchorsSnapshot().values)
         let mesh = anchors.isEmpty ? nil : CaptureLidarMesh(anchors: anchors)
+        lastFinalizedMesh = mesh
         await guide.depthRecorder.flush()
         await Task.detached(priority: .userInitiated) {
             _ = try? CaptureLidarSidecarWriter.write(mesh: mesh, captureID: id)

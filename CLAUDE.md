@@ -39,33 +39,36 @@ Kurzfassung:
 
 ## Stand im Code
 
-Neu (Schritt 3 des Plans, ein Raum):
+Schritt 3 (ein Raum) und Schritt 4 (mehrere Räume) des Plans sind umgesetzt. Auf einem echten
+iPhone ist davon noch nichts getestet.
 
 | Ort | Inhalt |
 |---|---|
-| `Packages/CosmicCapture/` | Lokales Swift-Paket (Swift 6, iOS 18) mit dem Capture-Kern und der Full-Guidance des Prototyps samt Tests. Cosmic-Erweiterungen in `Sources/CosmicCapture/Cosmic/`: LiDAR-Mesh (`lidar/mesh.glb`), Tiefe pro Frame (`lidar/depth/`), `CosmicCaptureStore`, `CosmicRoomCaptureView`. |
-| `RoomCapturesView.swift` | Liste der lokalen Captures mit Upload in den gewählten Space (vorher Kostenabfrage), Status und ZIP-Export. |
-| `RoomCaptureUploadService.swift` | Upload über `/room-captures` im Backend: Capture anmelden, ZIP und LiDAR-Mesh direkt in den Storage laden, Echo-3 starten, Status abfragen. Zustand pro Capture in `UserDefaults`. Noch nicht mit einem echten Capture getestet. |
-| `CosmicHomeView.swift` | "Start Scan" öffnet `CosmicRoomCaptureView`, "History" die Capture-Liste. |
+| `Packages/CosmicCapture/` | Lokales Swift-Paket (Swift 6, iOS 18) mit dem Capture-Kern und der Full-Guidance des Prototyps samt Tests. Cosmic-Erweiterungen in `Sources/CosmicCapture/Cosmic/`: LiDAR-Mesh (`lidar/mesh.glb`), Tiefe pro Frame (`lidar/depth/`), `CosmicCaptureStore`, `CosmicRoomCaptureView` (ein einzelner Raum), Glas-Stile für die App (`CosmicGlassStyles.swift`). |
+| `Packages/CosmicCapture/.../Cosmic/Tour/` | Raum-für-Raum-Ablauf. `CaptureTour` (Räume eines Space in Aufnahmereihenfolge mit Stockwerk, Capture, Türen, Backend-Raum) und `CosmicTourStore` (eine JSON-Datei pro Space in `Documents/CaptureTours/`). `CaptureDoorGeometry` (Raycast auf das LiDAR-Mesh, Bodenhöhe, Türnormale). `CaptureSessionContinuity` (wann zwei Captures dieselbe `capture_session_id` bekommen). `RoomCaptureAPI.swift` (Request-Bodies, Status-Zuordnung, Summe der Kosten). `TourCaptureFlow` und `CosmicTourCaptureView` (Raum-Karte, Scan, "Where does it continue?", Tür markieren). |
+| `CaptureTourView.swift` | Übersicht der Tour eines Space: Räume nach Stockwerk mit Status, "Add next room", "Capture again", Upload einzeln oder alle (vorher Kostenabfrage, bei mehreren die Summe), Raum vom Gerät entfernen. |
+| `RoomCapturesView.swift` | Liste aller lokalen Captures mit ZIP-Export. Captures ohne Tour lassen sich hier hochladen; Captures einer Tour werden nur in der Tour-Übersicht hochgeladen und entfernt. |
+| `RoomCaptureUploadService.swift` | Upload über `/room-captures` (mit `floor_name`, `captured_at`, `capture_session_id`), ZIP und LiDAR-Mesh direkt in den Storage, Start bei Echo-3, Statusabfrage. Für Touren zusätzlich die Tür-Verknüpfungen über `/room-connections` (anlegen, nach Neuaufnahme per `PATCH` ändern). Zustand pro Capture in `UserDefaults`. |
+| `CosmicHomeView.swift` | "Start Scan" öffnet die Tour-Übersicht des gewählten Space (ohne Space: ein einzelner Raum mit `CosmicRoomCaptureView`), "History" die Capture-Liste. |
+| `MenuService.swift`, `SpaceService.swift` | natives Home-Menü und Spaces |
+| `MatterportWebView.swift` | Matterport-Ansicht, kein neuer Code dafür |
 
-Paket-Tests: `xcodebuild -scheme CosmicCapture -destination 'platform=iOS Simulator,name=<iPhone>' test`
-im Ordner `Packages/CosmicCapture`. Die Texte im Capture-Ablauf und in der Capture-Liste sind englisch (so entschieden).
+Der API-Vertrag für mehrere Räume steht in `cosmic-backend/docs/multi-room-spaces.md`.
 
-Alt (nicht mehr aus der App erreichbar, wird entfernt, sobald der Upload mit einem echten Capture bestätigt ist):
+Änderungen an übernommenen Dateien des Prototyps sind klein gehalten und mit "Cosmic:" markiert:
+`ARCaptureCoordinator` (Session nach dem Speichern weiterlaufen lassen, Tracking-Zustand melden),
+`CaptureFlowModel.prepareForNextCapture`, `CoverageGuidanceExperience.lastFinalizedMesh`.
 
-| Datei | Inhalt | Zukunft |
-|---|---|---|
-| `ARMeshScannerView.swift`, `ScanViewModel.swift`, `ARTrackingService.swift` | Scan mit RoomPlan, Export `.usdz` | wird durch den neuen Capture-Ablauf ersetzt |
-| `ARMeshVisualizationView.swift` | Drahtgitter-Overlay aus LiDAR-Mesh-Ankern | wird durch das Coverage-Netz des Prototyps ersetzt |
-| `LiDARCaptureService.swift` | Frames + `transforms.json` (Nerfstudio) | falsches Format für Echo-3, wird ersetzt |
-| `ScanPackager.swift` | ZIP ohne Kompression | wiederverwendbar |
-| `ReconstructionJobService.swift` | Upload in die alte RunPod/GCS-Pipeline | nicht mehr verwenden |
-| `SpatialUploadService.swift`, `SpatialScanModels.swift` | RoomPlan-Objekte und -Flächen ans Backend | bleibt vorerst |
-| `CosmicHomeView.swift`, `MenuService.swift`, `SpaceService.swift` | natives Home-Menü und Spaces | bleibt |
-| `MatterportWebView.swift` | Matterport-Ansicht | kein neuer Code dafür |
+Paket-Tests: `xcodebuild -scheme CosmicCapture -destination 'platform=iOS Simulator,id=<Simulator-ID>' test`
+im Ordner `Packages/CosmicCapture` (IDs mit `xcodebuild -scheme CosmicCapture -showdestinations`; der
+Name allein ist mehrdeutig, wenn derselbe Simulator für mehrere iOS-Versionen existiert). Die Texte im
+Capture-Ablauf, in der Tour-Übersicht und in der Capture-Liste sind englisch (so entschieden).
 
-Der Quellcode liegt in `cosmic-ios/` (flach). Die Dateien unter `App/` sind ältere Kopien und
-gehören nicht zum Xcode-Target.
+Der alte RoomPlan-Scan ist entfernt (`ARMeshScannerView`, `ScanViewModel`, `ARTrackingService`,
+`ARMeshVisualizationView`, `LiDARCaptureService`, `ScanPackager`, `ReconstructionJobService`,
+`SpatialUploadService`, `SpatialScanModels`, `UploadService`, `ScanHistoryView`, `ScanRecord`,
+`ARSessionDelegateMultiplexer`, der Ordner `App/` mit älteren Kopien, der Multipart-Upload in
+`HTTPClient` und die Mikrofon-Berechtigung). Der Quellcode der App liegt flach in `cosmic-ios/`.
 
 **Nicht mehr verwenden**: die RunPod-3D-Pipeline und der Upload nach GCS. **Matterport wird
 ersetzt**: kein neuer Code und keine neuen Features dafür.
@@ -99,7 +102,8 @@ cosmic-webapp-frontend (React, Splat-Viewer mit three + @sparkjsdev/spark, auf V
   das Paket `Packages/CosmicCapture` ist Swift 6.
 - Architektur: **MVVM** (SwiftUI, kein Storyboard)
 - Async: **async/await** (kein Completion Handler)
-- Persistenz lokal: **SwiftData**
+- Persistenz lokal: Captures als Dateien unter `Documents/Captures/`, Touren als JSON unter
+  `Documents/CaptureTours/`, Upload-Zustand in `UserDefaults`. SwiftData wird nicht mehr verwendet.
 - Backend: REST API via `cosmic-backend`
 - Auth: Login über das Backend / Supabase, Token im Keychain
 - Kamera und LiDAR laufen nur auf einem echten iPhone; im Simulator laufen nur Unit-Tests.

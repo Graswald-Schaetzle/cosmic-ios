@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import SwiftData
 import CosmicCapture
 
 @main
@@ -29,6 +28,5 @@ struct cosmic_iosApp: App {
                 await authService.restoreSession()
             }
         }
-        .modelContainer(for: ScanRecord.self)
     }
 }

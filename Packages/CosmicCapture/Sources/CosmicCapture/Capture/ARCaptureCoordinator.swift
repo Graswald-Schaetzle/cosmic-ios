@@ -151,6 +151,13 @@ final class ARCaptureCoordinator: NSObject {
     @ObservationIgnored var onStorageFailure: ((CaptureBundleWriterError) -> Void)?
     @ObservationIgnored var onFatalError: ((String) -> Void)?
     @ObservationIgnored var onSamplingStateChanged: (() -> Void)?
+    /// Cosmic: called for every processed frame, so a tour can tell whether
+    /// the world stayed intact between two rooms.
+    @ObservationIgnored var onTrackingStateObserved: ((ARCamera.TrackingState, TimeInterval) -> Void)?
+    /// Cosmic: keep the AR session running after `finish`, so the door to
+    /// the next room can be marked and the next capture can continue in the
+    /// same world. Off by default (the prototype's behaviour).
+    @ObservationIgnored var keepsSessionRunningAfterFinish = false
 
     var currentWriterID: UUID? { writer?.id }
     var currentManifest: CaptureManifest? { writer?.currentManifest }
@@ -380,7 +387,9 @@ final class ARCaptureCoordinator: NSObject {
         isSamplingPauseRequested = true
         pendingSamplingArm = nil
         frameInbox.reset()
-        session.pause()
+        if !keepsSessionRunningAfterFinish {
+            session.pause()
+        }
 
         guard let writer else {
             throw CaptureBundleWriterError.emptyCapture
@@ -450,6 +459,7 @@ final class ARCaptureCoordinator: NSObject {
 
     private func handleFrame(_ frame: ARFrame) {
         trackingState = frame.camera.trackingState
+        onTrackingStateObserved?(frame.camera.trackingState, frame.timestamp)
         updateTrackingHint(frame.camera.trackingState)
         observeQualitySignals(frame)
         let isSettled = observeSettleGate(frame)

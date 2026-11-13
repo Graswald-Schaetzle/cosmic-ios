@@ -4,9 +4,12 @@ import CosmicCapture
 /// Lists the room captures saved on this device. Each capture holds an
 /// Echo-3 bundle plus LiDAR sidecar data (see docs/echo3-capture-plan.md).
 /// A capture can be uploaded into the selected space, where the backend
-/// turns it into a splat with Echo-3, or exported as a ZIP.
+/// turns it into a splat with Echo-3, or exported as a ZIP. Captures that
+/// belong to a tour are uploaded and removed from the tour overview, which
+/// knows their room, floor and door links; here they can only be exported.
 struct RoomCapturesView: View {
     let store: CosmicCaptureStore
+    let tours: CosmicTourStore
     /// The space uploads go into. Without one, uploading is disabled.
     let space: BackendSpace?
 
@@ -27,6 +30,7 @@ struct RoomCapturesView: View {
                         Section {
                             ForEach(store.captures) { capture in
                                 row(for: capture)
+                                    .deleteDisabled(tours.room(forCapture: capture.id) != nil)
                             }
                             .onDelete(perform: delete)
                         } footer: {
@@ -76,9 +80,9 @@ struct RoomCapturesView: View {
 
     private var footerText: String {
         if let space {
-            return "Uploads go into the space \"\(space.name)\". Processing a room takes about half an hour; LiDAR depth images stay on this device."
+            return "Uploads go into the space \"\(space.name)\". Processing a room takes about half an hour; LiDAR depth images stay on this device. Rooms of a tour are uploaded from the tour overview."
         }
-        return "Select a space to upload captures. Until then a capture can be exported as a ZIP."
+        return "Select a space to upload captures. Until then a capture can be exported as a ZIP. Rooms of a tour are uploaded from the tour overview."
     }
 
     private var emptyState: some View {
@@ -106,6 +110,9 @@ struct RoomCapturesView: View {
                         .foregroundStyle(.secondary)
                     HStack(spacing: 6) {
                         statusBadge(for: state)
+                        if tours.room(forCapture: capture.id) != nil {
+                            badge("Tour", systemImage: "point.topleft.down.to.point.bottomright.curvepath")
+                        }
                         if capture.lidarMeshURL != nil {
                             badge("LiDAR mesh", systemImage: "cube.transparent")
                         }
@@ -170,7 +177,10 @@ struct RoomCapturesView: View {
     /// Shown for captures that are not uploaded yet or whose upload failed.
     @ViewBuilder
     private func uploadButton(for capture: CosmicCaptureSummary, state: RoomCaptureUploadState?) -> some View {
-        if quotingID == capture.id {
+        if tours.room(forCapture: capture.id) != nil {
+            // Uploaded from the tour overview, with its room and floor.
+            EmptyView()
+        } else if quotingID == capture.id {
             ProgressView()
                 .frame(width: 44, height: 44)
         } else if state == nil || state?.phase == .failed {

@@ -169,6 +169,31 @@ final class CaptureFlowModel {
         }
     }
 
+    /// Cosmic: returns the flow to readiness for the next room of a tour.
+    /// The coordinator and its AR session are kept, so the next capture can
+    /// continue in the same ARKit world.
+    func prepareForNextCapture(name: String) {
+        guard step == .saved else { return }
+        captureNameDraft = CaptureNameDraft()
+        if !name.isEmpty {
+            captureNameDraft.updateFromUser(name)
+        }
+        savedRecord = nil
+        saveError = nil
+        finishWarnings = []
+        showFinishSheet = false
+        isPresentingFinishReview = false
+        hasReachedFrameLimit = false
+        scenePhasePolicy = CaptureScenePhasePolicy()
+        scanPass = .walls
+        isScanGuideExpanded = true
+        freeStorageLabel = CaptureStorageProbe.freeGigabytesLabel()
+        readinessIssue = coordinator.prepareReadiness()
+        step = .readiness
+        CaptureOrientationLock.beginCapturePresentation()
+        syncIdleTimer()
+    }
+
     func onDisappear() {
         // The discard and finish sheets present over this view; keep the AR
         // session alive while they are up.

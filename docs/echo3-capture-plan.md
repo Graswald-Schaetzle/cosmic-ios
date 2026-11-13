@@ -1,7 +1,8 @@
 # Plan: Raum-für-Raum-Capture mit SpAItial Echo-3
 
-Stand: 11.11.2026. Umgesetzt ist Schritt 3 (iOS, ein Raum) bis zum lokal gespeicherten Capture
-mit LiDAR-Daten, siehe "Umsetzungsstand". Alles andere ist offen. Dieses Dokument ist die Übergabe aus der
+Stand: 13.11.2026. Umgesetzt sind Schritt 3 (iOS, ein Raum) und Schritt 4 (iOS, mehrere Räume
+mit Stockwerken und Tür-Verknüpfung), siehe "Umsetzungsstand". Auf einem echten iPhone ist
+beides noch nicht getestet. Dieses Dokument ist die Übergabe aus der
 Planungs-Session, damit eine neue (lokale) Session ohne Vorwissen weiterarbeiten kann.
 
 ## Ziel
@@ -89,7 +90,10 @@ Diese Regeln gehören zum Echo-3-Vertrag und stecken fertig im Prototyp
 (`ios/Capture/ContinuousScanSampler.swift`, `CaptureTrackingSettleGate.swift`,
 `CaptureFrameQualityGate.swift`).
 
-## Stand der iOS-App heute
+## Stand der iOS-App vor dem Umbau
+
+Dieser Abschnitt beschreibt den Ausgangspunkt. Der RoomPlan-Scan und die hier genannten Dateien
+sind inzwischen entfernt, siehe "Umsetzungsstand".
 
 - `ARMeshScannerView` + `ScanViewModel`: Scan mit RoomPlan, Export als `.usdz`, Upload als Space.
 - `ARMeshVisualizationView`: Drahtgitter-Overlay aus den LiDAR-Mesh-Ankern.
@@ -215,8 +219,75 @@ ARKit-Konfiguration wie in der "Full"-Variante des Prototyps: `sceneReconstructi
   `captures`, Start bei Echo-3, Statusabfrage alle 30 s bei offener Liste). Der Upload läuft
   im Vordergrund; Upload im Hintergrund und Push-Nachricht fehlen. Nur gebaut, **nicht mit
   einem echten Capture getestet**.
-- Offen in Schritt 3: Test auf dem iPhone, danach Entfernen des alten RoomPlan-Scans.
+- Offen in Schritt 3: Test auf dem iPhone.
 - iOS 18 als Mindestversion ist bestätigt.
+- **Alter RoomPlan-Scan entfernt** (13.11.2026): alle Dateien des alten Wegs, der Ordner `App/`,
+  der Multipart-Upload in `HTTPClient`, SwiftData (`ScanRecord`) und die Mikrofon-Berechtigung.
+
+### Schritt 4, iOS mehrere Räume (Branch `feature/multi-room-spaces`)
+
+Vertrag mit dem Backend: `cosmic-backend/docs/multi-room-spaces.md`.
+
+- **Tour pro Space**: `CaptureTour` hält die Räume in Aufnahmereihenfolge. Pro Raum: Name,
+  Stockwerk, lokales Capture, Zeitpunkt des Capture-Starts, `capture_session_id`, Eingangstür,
+  Ausgangstür mit dem Raum dahinter, Raum-ID im Backend und die ID der Tür-Verknüpfung. Gespeichert
+  als `Documents/CaptureTours/space-<id>.json`, bei jeder Änderung sofort.
+- **Ablauf** (`CosmicTourCaptureView`): Raum-Karte (Name, Stockwerk aus den bisherigen wählen oder
+  neu eingeben, Checkliste) → Scan → Speichern → "Where does it continue?" mit drei Wegen: Tür zum
+  nächsten Raum markieren, nächster Raum ohne Tür-Verknüpfung, Tour beenden. Nach dem Markieren
+  fordert die nächste Raum-Karte auf, durchzugehen, die Tür zu schließen und direkt dahinter zu
+  starten.
+- **Tür am Ende eines Raums (`from_door`)**: Der Nutzer zielt mit dem Fadenkreuz auf die
+  geschlossene Tür. Ein Strahl aus der Bildmitte wird mit dem LiDAR-Mesh des gerade gespeicherten
+  Raums geschnitten (ohne Mesh: ARKit-Raycast). Position ist der Treffpunkt, auf den Boden
+  projiziert. Die Normale ist die flächengewichtete Richtung der senkrechten Mesh-Flächen im Umkreis
+  von 35 cm um den Treffpunkt, horizontal und vom Gerät weg; weicht sie um mehr als 60° von der
+  Blickrichtung ab oder fehlt sie, gilt die horizontale Blickrichtung.
+- **Tür am Anfang eines Raums (`to_door`)**: Kamerapose im Moment des Scan-Starts. Position ist
+  die Geräteposition auf dem Boden, Normale die horizontale Blickrichtung. Wird nur gespeichert, wenn
+  der Nutzer durch eine markierte Tür kam (Schalter auf der Raum-Karte).
+- **Bodenhöhe**: Median der als Boden klassifizierten Mesh-Punkte im Umkreis von 1,5 m; bei einem
+  Mesh ohne Klassifikation das 5. Perzentil der Höhen; sonst ARKit-Raycast senkrecht nach unten;
+  sonst Gerätehöhe minus 1,4 m. Die Quelle steht lokal an der Tür (`floor_source`) und wird nicht
+  ans Backend geschickt.
+- **Eine ARKit-Session über mehrere Räume (Variante A)**: Die Session läuft nach dem Speichern
+  weiter, ohne Frames zu speichern; vor dem nächsten Raum wird nur das LiDAR-Mesh zurückgesetzt,
+  nicht das Tracking. Solche Captures bekommen dieselbe `capture_session_id`. Die ID wird neu
+  vergeben, sobald die gemeinsame Welt nicht mehr sicher ist: Tracking nicht verfügbar, neu
+  startend oder relokalisierend, länger als 3 s eingeschränkt, App nicht im Vordergrund oder
+  Frame-Limit erreicht (dort pausiert die Session). Dann verbindet nur das Türpaar die Räume
+  (Variante B). Wird die Aufnahme geschlossen und später fortgesetzt, beginnt immer eine neue
+  Session.
+- **Übersicht** (`CaptureTourView`): Räume nach Stockwerk mit Status (On device, Uploading,
+  Processing, In space, Failed), "Add next room", "Capture again", Upload einzeln oder alle. Vor
+  jedem Upload die Kostenabfrage mit Bestätigung, bei mehreren Räumen die Summe.
+- **Neuaufnahme**: ersetzt das Capture des Raums; Name, Stockwerk und Raum-ID im Backend bleiben,
+  der Upload schickt `room_id`. Beide Türen des alten Captures verfallen, weil sie in dessen
+  Koordinaten liegen. Die App bietet an, hinter der Eingangstür zu starten und die Ausgangstür neu
+  zu markieren. Ohne neue Messung bleibt die alte Verknüpfung beim alten Job; laut Vertrag blendet
+  das Backend sie dann aus.
+- **Upload**: `POST /room-captures` mit `floor_name`, `captured_at`, `capture_session_id`. Sobald
+  beide Räume einer Tür einen Job haben, `POST /room-connections`; die ID wird in der Tour
+  gespeichert. Vor dem Anlegen fragt die App die Verknüpfungen des Space ab und ändert eine
+  vorhandene für dasselbe Raumpaar per `PATCH`, statt eine zweite anzulegen. Nach einer Neuaufnahme
+  wird nur die Seite geändert, deren Tür neu gemessen wurde.
+- Geprüft: 299 Paket-Tests im Simulator (255 vorhandene, 44 neue für Tour-Modell, Tür-Geometrie,
+  Session-Regel, Request-Bodies, Status und Kostensumme), App-Build für Simulator und Gerät ohne
+  Warnungen im eigenen Code.
+- **Nicht geprüft**: alles mit Kamera und LiDAR. Dazu gehören das Weiterlaufen der Session nach dem
+  Speichern, das Zurücksetzen des Meshs ohne Verlust des Weltursprungs, der Raycast auf die Tür, die
+  Bodenhöhe, die Bedienung der neuen Bildschirme und der Upload gegen das Backend
+  (`/room-connections` und die neuen Felder sind dort parallel entstanden).
+- **Offen**:
+  - Räume, die nicht in einer Kette liegen (Flur mit mehreren Türen): Pro Raum lässt sich nur eine
+    Ausgangstür markieren. Ein Raum, der nach dem Zurückgehen durch den Flur aufgenommen wird, hat
+    keine Tür-Verknüpfung; er teilt höchstens die `capture_session_id`.
+  - Upload im Hintergrund und Push-Nachricht.
+  - Raum umbenennen, Stockwerk nachträglich ändern, Reihenfolge der Stockwerke festlegen.
+  - Entfernen eines Raums löscht nur lokal; Raum und Verknüpfungen im Backend bleiben.
+  - `captured_at` ist der Start des Captures, nicht der EXIF-Zeitpunkt des ersten Bildes (Abstand
+    unter einer Sekunde plus Wartezeit bis zum stabilen Tracking).
+  - Türbreite (`width_m`) wird nicht gemessen.
 
 ## Mehrere Räume im Viewer und Neuaufnahme einzelner Räume
 

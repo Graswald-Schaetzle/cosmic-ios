@@ -52,6 +52,8 @@ struct CosmicHomeView: View {
     @State private var activeSheet: HomeSheet?
     @State private var showScanner = false
     @State private var captureStore = CosmicCaptureStore()
+    @State private var tourStore = CosmicTourStore()
+    @State private var tourSpace: BackendSpace?
     @State private var showMorePanel = false
     @State private var viewerIsLoading = true
     @State private var viewerErrorMessage: String?
@@ -82,7 +84,7 @@ struct CosmicHomeView: View {
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
             case .history:
-                RoomCapturesView(store: captureStore, space: selectedSpace)
+                RoomCapturesView(store: captureStore, tours: tourStore, space: selectedSpace)
             case .spaces:
                 SpacesSheetView(
                     spaces: spaces,
@@ -102,7 +104,12 @@ struct CosmicHomeView: View {
             }
         }
         .fullScreenCover(isPresented: $showScanner) {
+            // Without a space there is no tour: capture a single room that
+            // stays on the device and can be exported from the history.
             CosmicRoomCaptureView(store: captureStore)
+        }
+        .fullScreenCover(item: $tourSpace) { space in
+            CaptureTourView(space: space, captureStore: captureStore, tourStore: tourStore)
         }
         .task {
             await loadHomeState()
@@ -357,7 +364,7 @@ struct CosmicHomeView: View {
     private var dashboardActions: some View {
         HStack(spacing: 10) {
             Button {
-                showScanner = true
+                startScan()
             } label: {
                 Label("Start Scan", systemImage: "camera.viewfinder")
                     .font(.subheadline.weight(.semibold))
@@ -547,9 +554,18 @@ struct CosmicHomeView: View {
 
         switch action {
         case .scan:
-            showScanner = true
+            startScan()
         case .history:
             activeSheet = .history
+        }
+    }
+
+    /// Opens the room-by-room tour of the selected space.
+    private func startScan() {
+        if let selectedSpace {
+            tourSpace = selectedSpace
+        } else {
+            showScanner = true
         }
     }
 

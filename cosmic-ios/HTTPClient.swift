@@ -97,35 +97,13 @@ final class HTTPClient {
         return try await perform(request)
     }
 
-    /// Multipart-Upload für Dateien (z. B. USDZ-Modelle) mit optionalem Progress-Callback.
-    func upload<Response: Decodable>(
-        _ path: String,
-        fileURL: URL,
-        fileFieldName: String,
-        additionalFields: [String: String] = [:],
-        onProgress: ((Double) -> Void)? = nil
-    ) async throws -> Response {
-        let boundary = UUID().uuidString
-        let bodyData = try buildMultipartBody(
-            fileURL: fileURL,
-            fileFieldName: fileFieldName,
-            additionalFields: additionalFields,
-            boundary: boundary
-        )
-
-        onProgress?(0.3)
-
-        var request = try buildRequest(
-            method: .POST,
-            path: path,
-            body: bodyData,
-            contentType: "multipart/form-data; boundary=\(boundary)"
-        )
-        // URLSession.upload(for:from:) erwartet keinen httpBody – wir übergeben ihn als fromData
-        request.httpBody = nil
-
-        let result: Response = try await performUpload(request, data: bodyData, onProgress: onProgress)
-        return result
+    /// Generic PATCH request with a Codable body and automatic decoding.
+    func patch<Body: Encodable, Response: Decodable>(_ path: String, body: Body) async throws -> Response {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let bodyData = try encoder.encode(body)
+        let request = try buildRequest(method: .PATCH, path: path, body: bodyData, contentType: "application/json")
+        return try await perform(request)
     }
 
     // MARK: - Private Helpers
@@ -184,40 +162,6 @@ final class HTTPClient {
         }
     }
 
-    /// Führt einen Datei-Upload durch und dekodiert die Antwort.
-    private func performUpload<T: Decodable>(
-        _ request: URLRequest,
-        data: Data,
-        onProgress: ((Double) -> Void)? = nil
-    ) async throws -> T {
-        let responseData: Data
-        let response: URLResponse
-
-        do {
-            (responseData, response) = try await session.upload(for: request, from: data)
-        } catch {
-            throw HTTPClientError.networkError(error)
-        }
-
-        if shouldRefreshAuth(response: response, data: responseData) {
-            return try await retryUploadAfterRefreshingAuth(
-                originalRequest: request,
-                data: data,
-                onProgress: onProgress
-            )
-        }
-
-        onProgress?(1.0)
-
-        try validate(response: response, data: responseData)
-
-        do {
-            return try decoder.decode(T.self, from: responseData)
-        } catch {
-            throw HTTPClientError.decodingFailed
-        }
-    }
-
     /// Prüft den HTTP-Statuscode und wirft bei Fehlern eine passende Exception.
     private func validate(response: URLResponse, data: Data) throws {
         guard let httpResponse = response as? HTTPURLResponse else {
@@ -255,36 +199,6 @@ final class HTTPClient {
         }
     }
 
-    private func retryUploadAfterRefreshingAuth<T: Decodable>(
-        originalRequest: URLRequest,
-        data: Data,
-        onProgress: ((Double) -> Void)?
-    ) async throws -> T {
-        do {
-            try await AuthService.shared.refreshSessionIfNeeded(force: true)
-        } catch {
-            throw HTTPClientError.notAuthenticated
-        }
-
-        let retriedRequest = try rebuildAuthorizedRequest(from: originalRequest)
-        let (responseData, response): (Data, URLResponse)
-
-        do {
-            (responseData, response) = try await session.upload(for: retriedRequest, from: data)
-        } catch {
-            throw HTTPClientError.networkError(error)
-        }
-
-        onProgress?(1.0)
-        try validate(response: response, data: responseData)
-
-        do {
-            return try decoder.decode(T.self, from: responseData)
-        } catch {
-            throw HTTPClientError.decodingFailed
-        }
-    }
-
     private func rebuildAuthorizedRequest(from request: URLRequest) throws -> URLRequest {
         guard let token = authToken, !token.isEmpty else {
             throw HTTPClientError.notAuthenticated
@@ -314,52 +228,5 @@ final class HTTPClient {
             || message.contains("jwt expired")
             || message.contains("expired token")
             || message.contains("expired")
-    }
-
-    /// Erstellt den Multipart-Form-Data-Body.
-    private func buildMultipartBody(
-        fileURL: URL,
-        fileFieldName: String,
-        additionalFields: [String: String],
-        boundary: String
-    ) throws -> Data {
-        var body = Data()
-        let crlf = "\r\n"
-
-        for (key, value) in additionalFields {
-            body.appendString("--\(boundary)\(crlf)")
-            body.appendString("Content-Disposition: form-data; name=\"\(key)\"\(crlf)")
-            body.appendString(crlf)
-            body.appendString(value)
-            body.appendString(crlf)
-        }
-
-        let fileName = fileURL.lastPathComponent
-        let fileData: Data
-        do {
-            fileData = try Data(contentsOf: fileURL)
-        } catch {
-            throw HTTPClientError.networkError(error)
-        }
-
-        body.appendString("--\(boundary)\(crlf)")
-        body.appendString("Content-Disposition: form-data; name=\"\(fileFieldName)\"; filename=\"\(fileName)\"\(crlf)")
-        body.appendString("Content-Type: model/vnd.usdz+zip\(crlf)")
-        body.appendString(crlf)
-        body.append(fileData)
-        body.appendString(crlf)
-        body.appendString("--\(boundary)--\(crlf)")
-
-        return body
-    }
-}
-
-// MARK: - Data Extension
-
-private extension Data {
-    mutating func appendString(_ string: String) {
-        if let encoded = string.data(using: .utf8) {
-            append(encoded)
-        }
     }
 }

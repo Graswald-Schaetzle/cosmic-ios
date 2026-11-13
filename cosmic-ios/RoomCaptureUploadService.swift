@@ -26,41 +26,34 @@ struct RoomCaptureJob: Decodable {
     }
 }
 
-/// Price and duration of processing one capture with Echo-3.
-struct RoomCaptureQuote: Decodable {
-    let requiredCredits: Int
-    let availableCredits: Int
-    let hasEnough: Bool
-    let estimatedDurationSeconds: Double?
-
-    enum CodingKeys: String, CodingKey {
-        case requiredCredits = "required_credits"
-        case availableCredits = "available_credits"
-        case hasEnough = "has_enough"
-        case estimatedDurationSeconds = "estimated_duration_seconds"
-    }
-}
-
 private struct DataEnvelope<T: Decodable>: Decodable {
     let data: T
 }
 
-private struct RegisterCaptureBody: Encodable {
-    let spaceId: Int
-    let title: String
-    let frameCount: Int
-    let roomId: Int?
-    let roomName: String?
-    let hasLidarMesh: Bool
+/// A door link as the backend stores it (`/room-connections`, see
+/// cosmic-backend/docs/multi-room-spaces.md).
+private struct BackendRoomConnection: Decodable {
+    let connectionId: Int
+    let fromRoomId: Int?
+    let toRoomId: Int?
 
     enum CodingKeys: String, CodingKey {
-        case spaceId = "space_id"
-        case title
-        case frameCount = "frame_count"
-        case roomId = "room_id"
-        case roomName = "room_name"
-        case hasLidarMesh = "has_lidar_mesh"
+        case connectionId = "connection_id"
+        case fromRoomId = "from_room_id"
+        case toRoomId = "to_room_id"
     }
+}
+
+/// What a tour adds to the upload of a capture: the room it belongs to.
+struct RoomCaptureUploadContext {
+    /// The room in the backend, once it exists. The capture then updates
+    /// that room instead of creating one.
+    var roomID: Int?
+    var roomName: String
+    var floorName: String
+    var captureSessionID: String
+    /// Called as soon as the backend has assigned the room.
+    var onRoomAssigned: (Int) -> Void
 }
 
 private struct EmptyBody: Encodable {}
@@ -69,14 +62,7 @@ private struct EmptyBody: Encodable {}
 
 /// Where a local capture stands on its way to a finished splat.
 struct RoomCaptureUploadState: Codable, Equatable {
-    enum Phase: String, Codable {
-        /// The ZIP is being built or uploaded from this device.
-        case uploading
-        /// Echo-3 is working on it.
-        case processing
-        case completed
-        case failed
-    }
+    typealias Phase = RoomCaptureUploadPhase
 
     var phase: Phase
     var spaceId: Int
@@ -116,6 +102,8 @@ final class RoomCaptureUploadService {
     private(set) var states: [UUID: RoomCaptureUploadState] = [:]
     /// Fraction of the ZIP sent so far, only while a capture is uploading.
     private(set) var progress: [UUID: Double] = [:]
+    /// Why the door links of a tour could not be sent, if the last attempt failed.
+    private(set) var connectionSyncError: String?
 
     private static let defaultsKey = "roomCaptureUploadStates"
     private let defaults: UserDefaults
@@ -156,11 +144,21 @@ final class RoomCaptureUploadService {
     }
 
     /// Uploads a capture into the given space and starts Echo-3. Errors end
-    /// up in the capture's state instead of being thrown.
-    func upload(_ capture: CosmicCaptureSummary, to spaceID: Int, store: CosmicCaptureStore) async {
+    /// up in the capture's state instead of being thrown. `context` places
+    /// the capture in a room of a tour; without it the capture creates a
+    /// room named after itself.
+    func upload(
+        _ capture: CosmicCaptureSummary,
+        to spaceID: Int,
+        store: CosmicCaptureStore,
+        context: RoomCaptureUploadContext? = nil
+    ) async {
         if let current = states[capture.id], current.phase != .failed { return }
 
-        let roomID = states[capture.id]?.spaceId == spaceID ? states[capture.id]?.roomId : nil
+        // A room created by an earlier attempt is reused, so a retry does
+        // not create a second room.
+        let retriedRoomID = states[capture.id]?.spaceId == spaceID ? states[capture.id]?.roomId : nil
+        let roomID = context?.roomID ?? retriedRoomID
         var state = RoomCaptureUploadState(phase: .uploading, spaceId: spaceID, roomId: roomID)
         set(state, for: capture.id)
         progress[capture.id] = 0
@@ -172,19 +170,25 @@ final class RoomCaptureUploadService {
 
             let registered: DataEnvelope<RoomCaptureJob> = try await HTTPClient.shared.post(
                 "/room-captures",
-                body: RegisterCaptureBody(
-                    spaceId: spaceID,
+                body: RoomCaptureRegistrationBody(
+                    spaceID: spaceID,
                     title: capture.name,
                     frameCount: capture.frameCount,
-                    roomId: roomID,
-                    roomName: roomID == nil ? capture.name : nil,
+                    roomID: roomID,
+                    roomName: context?.roomName ?? capture.name,
+                    floorName: context?.floorName,
+                    capturedAt: capture.createdAt,
+                    captureSessionID: context?.captureSessionID,
                     hasLidarMesh: capture.lidarMeshURL != nil
                 )
             )
             let job = registered.data
             state.jobId = job.jobId
-            state.roomId = job.roomId
+            state.roomId = job.roomId ?? roomID
             set(state, for: capture.id)
+            if let assignedRoomID = state.roomId {
+                context?.onRoomAssigned(assignedRoomID)
+            }
 
             guard let uploadURL = job.uploadURL.flatMap(URL.init(string:)) else {
                 throw RoomCaptureUploadError.missingUploadURL
@@ -246,21 +250,111 @@ final class RoomCaptureUploadService {
         persist()
     }
 
+    // MARK: - Tours
+
+    /// Uploads the capture of a tour room: floor, capture time and session
+    /// go along, and a room that already exists in the backend is updated
+    /// instead of duplicated. Afterwards the door links are brought up to date.
+    func uploadTourRoom(
+        _ roomID: UUID,
+        spaceID: Int,
+        tours: CosmicTourStore,
+        captures: CosmicCaptureStore
+    ) async {
+        guard let room = tours.tour(for: spaceID).room(id: roomID),
+              let capture = captures.captures.first(where: { $0.id == room.captureID })
+        else { return }
+        let context = RoomCaptureUploadContext(
+            roomID: room.backendRoomID,
+            roomName: room.name,
+            floorName: room.floorName,
+            captureSessionID: room.captureSessionID,
+            onRoomAssigned: { backendRoomID in
+                tours.update(spaceID: spaceID) { $0.setBackendRoomID(backendRoomID, roomID: roomID) }
+            }
+        )
+        await upload(capture, to: spaceID, store: captures, context: context)
+        await syncTour(spaceID: spaceID, tours: tours)
+    }
+
+    /// Creates or updates the door links (`/room-connections`) whose two
+    /// rooms are uploaded. Safe to call again at any time: the connection id
+    /// is remembered in the tour, and a connection the backend already has
+    /// for the same two rooms is updated instead of created twice.
+    func syncTour(spaceID: Int, tours: CosmicTourStore) async {
+        // Rooms registered by an upload that was cut off before the tour was saved.
+        for room in tours.tour(for: spaceID).rooms where room.backendRoomID == nil {
+            if let state = states[room.captureID], state.spaceId == spaceID, let backendRoomID = state.roomId {
+                tours.update(spaceID: spaceID) { $0.setBackendRoomID(backendRoomID, roomID: room.id) }
+            }
+        }
+
+        let tour = tours.tour(for: spaceID)
+        var jobIDs: [UUID: Int] = [:]
+        for room in tour.rooms {
+            guard let state = states[room.captureID], state.spaceId == spaceID, let jobID = state.jobId,
+                  state.phase == .processing || state.phase == .completed
+            else { continue }
+            jobIDs[room.captureID] = jobID
+        }
+        let actions = tour.connectionActions(jobIDs: jobIDs)
+        guard !actions.isEmpty else {
+            connectionSyncError = nil
+            return
+        }
+
+        var failure: String?
+        var existing: [BackendRoomConnection]?
+        for action in actions {
+            do {
+                var connectionID = action.connectionID
+                if connectionID == nil {
+                    if existing == nil {
+                        let listed: DataEnvelope<[BackendRoomConnection]> = try await HTTPClient.shared.get(
+                            "/room-connections?space_id=\(spaceID)"
+                        )
+                        existing = listed.data
+                    }
+                    connectionID = existing?.first {
+                        $0.fromRoomId == action.body.fromRoomID && $0.toRoomId == action.body.toRoomID
+                    }?.connectionId
+                }
+                if let connectionID {
+                    let _: DataEnvelope<BackendRoomConnection> = try await HTTPClient.shared.patch(
+                        "/room-connections/\(connectionID)",
+                        body: action.body.asUpdate
+                    )
+                } else {
+                    let created: DataEnvelope<BackendRoomConnection> = try await HTTPClient.shared.post(
+                        "/room-connections",
+                        body: action.body
+                    )
+                    connectionID = created.data.connectionId
+                }
+                if let connectionID {
+                    let record = CaptureTourConnectionRecord(
+                        connectionID: connectionID, fromJobID: action.fromJobID, toJobID: action.toJobID
+                    )
+                    tours.update(spaceID: spaceID) { $0.setExitConnection(record, roomID: action.fromRoomID) }
+                }
+            } catch {
+                failure = error.localizedDescription
+            }
+        }
+        connectionSyncError = failure
+    }
+
     // MARK: - Private
 
     private func apply(_ job: RoomCaptureJob, to state: inout RoomCaptureUploadState) {
-        switch job.status {
-        case "completed":
-            state.phase = .completed
-            state.errorMessage = nil
-        case "failed", "cancelled":
-            state.phase = .failed
+        state.phase = RoomCaptureUploadPhase(backendStatus: job.status)
+        switch state.phase {
+        case .failed:
             state.errorMessage = job.errorMessage ?? "Processing failed."
-        case "uploading":
-            state.phase = .uploading
-        default:
-            state.phase = .processing
+        case .completed, .processing:
             state.errorMessage = nil
+        case .uploading:
+            break
         }
     }
 
