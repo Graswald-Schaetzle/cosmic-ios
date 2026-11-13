@@ -2,8 +2,11 @@
 
 ## Übergabe / Weitermachen (für neue Sessions zuerst lesen)
 
-**Stand (13.11.2026):** Phase 0 (Prototyp) fertig. Phase 1 (Fundament) committet in `c47e7a3` auf Branch
-`claude/compassionate-noether-mnwp3i`, **aber noch nie kompiliert** (entstanden in einer Cloud-Session ohne Xcode).
+**Stand (14.11.2026):** Phase 0 (Prototyp) und Phase 1 (Fundament) fertig, Phase 1 kompiliert ohne Änderungen mit
+Xcode 27.2 (iOS-27.2-SDK, Deployment Target bleibt iOS 26.0). Phase 2 (App-Shell) umgesetzt und für Simulator und
+Gerät gebaut, aber **noch nicht im Simulator oder auf dem iPhone angesehen**. Die Paket-Tests liefen am 14.11. nicht,
+weil `~/Library/Developer/CoreSimulator/Devices` auf die externe Platte `/Volumes/T9` verlinkt ist; ohne die Platte
+startet kein Simulator.
 
 **Prototyp:** `docs/design/cosmic-ios-redesign.html` im Browser öffnen (klickbar, maßgeblich für Layout, Texte
 und Abstände). Online-Kopie: https://claude.ai/artifact/5zKVdj8vnpHrdXnLGKYJ49 (privat). Im Prototyp ist der
@@ -24,7 +27,18 @@ Akzent "Silber" der entschiedene; Supernova/Nebula/Pulsar sind verworfene Varian
 = Silber; `cosmic-ios/AppModel.swift` (Spaces, gemerkte Auswahl, Captures, `activeWork` für die Upload-Leiste),
 noch nicht in der App verwendet.
 
+**Phase 2 enthält:** `RootView.swift` (TabView Home/Captures, Scan-Tab mit Rolle `.search`, ab iOS 27 `.prominent`,
+dessen Auswahl abgefangen wird und den Capture-Ablauf öffnet; `.tabViewBottomAccessory(isEnabled:)` aus
+`AppModel.activeWork`, erst ab iOS 26.1, unter 26.0 keine Leiste; `.toolbarTitleMenu` mit Space-Picker; Avatar →
+`ProfileView.swift`), einfaches `SpaceHomeView.swift` (Raumnamen aus `/spaces`, leere Zustände), `RoomCapturesView`
+ohne eigenen `NavigationStack`, Polling der Echo-3-Jobs in `AppModel.pollProcessing()`, App immer dunkel.
+Gelöscht: `CosmicHomeView.swift`, `MatterportWebView.swift`, `AppMenuModels.swift`, `MenuService.swift`, Matterport in
+`Config.swift`. Bewusst weggelassen, weil es dafür noch keine Daten/Endpunkte gibt: "New space", E-Mail im Profil,
+Mitteilungen, "Open web app".
+
 **Nächste Schritte:**
+0. Phase 2 im Simulator prüfen (T9-Platte anschließen): Scan-Tab bleibt nicht ausgewählt, Title-Menü bei großem
+   Titel, Bottom Accessory während eines Uploads.
 1. Bauen und testen: im Ordner `Packages/CosmicCapture`
    `xcodebuild -scheme CosmicCapture -destination 'platform=iOS Simulator,name=iPhone 17' test`, danach App für
    Simulator und Gerät bauen. Compilerfehler zuerst beheben (v. a. `glassEffect`-Aufrufe, Swift-6-Concurrency).

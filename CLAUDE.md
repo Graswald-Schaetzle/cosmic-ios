@@ -53,7 +53,8 @@ Neu (Schritt 3 des Plans, ein Raum):
 | `Packages/CosmicCapture/` | Lokales Swift-Paket (Swift 6, iOS 26) mit dem Capture-Kern und der Full-Guidance des Prototyps samt Tests. Cosmic-Erweiterungen in `Sources/CosmicCapture/Cosmic/`: LiDAR-Mesh (`lidar/mesh.glb`), Tiefe pro Frame (`lidar/depth/`), `CosmicCaptureStore`, `CosmicRoomCaptureView`. |
 | `RoomCapturesView.swift` | Liste der lokalen Captures mit Upload in den gewählten Space (vorher Kostenabfrage), Status und ZIP-Export. |
 | `RoomCaptureUploadService.swift` | Upload über `/room-captures` im Backend: Capture anmelden, ZIP und LiDAR-Mesh direkt in den Storage laden, Echo-3 starten, Status abfragen. Zustand pro Capture in `UserDefaults`. Noch nicht mit einem echten Capture getestet. |
-| `CosmicHomeView.swift` | "Start Scan" öffnet `CosmicRoomCaptureView`, "History" die Capture-Liste. |
+| `RootView.swift` | App-Shell (Redesign Phase 2): `TabView` mit Home und Captures, abgesetzter Scan-Tab öffnet `CosmicRoomCaptureView`, Upload-Leiste als `.tabViewBottomAccessory`, Space-Wechsel im Title-Menü, Profil-Sheet (`ProfileView.swift`). Zustand in `AppModel.swift`. |
+| `SpaceHomeView.swift` | Tab Home: Räume des gewählten Space (einfach, wird in Phase 3 ausgebaut). |
 
 Paket-Tests: `xcodebuild -scheme CosmicCapture -destination 'platform=iOS Simulator,name=<iPhone>' test`
 im Ordner `Packages/CosmicCapture`. Die Texte im Capture-Ablauf und in der Capture-Liste sind englisch (so entschieden).
@@ -68,8 +69,7 @@ Alt (nicht mehr aus der App erreichbar, wird entfernt, sobald der Upload mit ein
 | `ScanPackager.swift` | ZIP ohne Kompression | wiederverwendbar |
 | `ReconstructionJobService.swift` | Upload in die alte RunPod/GCS-Pipeline | nicht mehr verwenden |
 | `SpatialUploadService.swift`, `SpatialScanModels.swift` | RoomPlan-Objekte und -Flächen ans Backend | bleibt vorerst |
-| `CosmicHomeView.swift`, `MenuService.swift`, `SpaceService.swift` | natives Home-Menü und Spaces | bleibt |
-| `MatterportWebView.swift` | Matterport-Ansicht | kein neuer Code dafür |
+| `SpaceService.swift` | Spaces laden | bleibt |
 
 Der Quellcode liegt in `cosmic-ios/` (flach). Die Dateien unter `App/` sind ältere Kopien und
 gehören nicht zum Xcode-Target.

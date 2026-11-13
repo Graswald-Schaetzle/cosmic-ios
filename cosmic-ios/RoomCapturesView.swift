@@ -18,59 +18,56 @@ struct RoomCapturesView: View {
     @State private var errorMessage: String?
 
     var body: some View {
-        NavigationStack {
-            Group {
-                if store.captures.isEmpty {
-                    emptyState
-                } else {
-                    List {
-                        Section {
-                            ForEach(store.captures) { capture in
-                                row(for: capture)
-                            }
-                            .onDelete(perform: delete)
-                        } footer: {
-                            Text(footerText)
+        Group {
+            if store.captures.isEmpty {
+                emptyState
+            } else {
+                List {
+                    Section {
+                        ForEach(store.captures) { capture in
+                            row(for: capture)
                         }
+                        .onDelete(perform: delete)
+                    } footer: {
+                        Text(footerText)
                     }
                 }
             }
-            .navigationTitle("Room Captures")
-            .task { await store.refresh() }
-            .task { await pollProcessing() }
-            .refreshable {
-                await store.refresh()
-                await uploads.refreshProcessing()
+        }
+        .navigationTitle("Captures")
+        .task { await store.refresh() }
+        .refreshable {
+            await store.refresh()
+            await uploads.refreshProcessing()
+        }
+        .sheet(item: $exportedZip) { zip in
+            ActivityView(items: [zip.url])
+        }
+        .alert(
+            "Process this room?",
+            isPresented: Binding(
+                get: { pendingUpload != nil },
+                set: { if !$0 { pendingUpload = nil } }
+            ),
+            presenting: pendingUpload
+        ) { pending in
+            if pending.quote.hasEnough {
+                Button("Upload") { startUpload(pending) }
             }
-            .sheet(item: $exportedZip) { zip in
-                ActivityView(items: [zip.url])
-            }
-            .alert(
-                "Process this room?",
-                isPresented: Binding(
-                    get: { pendingUpload != nil },
-                    set: { if !$0 { pendingUpload = nil } }
-                ),
-                presenting: pendingUpload
-            ) { pending in
-                if pending.quote.hasEnough {
-                    Button("Upload") { startUpload(pending) }
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: { pending in
-                Text(quoteMessage(for: pending))
-            }
-            .alert(
-                "Action failed",
-                isPresented: Binding(
-                    get: { errorMessage != nil },
-                    set: { if !$0 { errorMessage = nil } }
-                )
-            ) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text(errorMessage ?? "")
-            }
+            Button("Cancel", role: .cancel) {}
+        } message: { pending in
+            Text(quoteMessage(for: pending))
+        }
+        .alert(
+            "Action failed",
+            isPresented: Binding(
+                get: { errorMessage != nil },
+                set: { if !$0 { errorMessage = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(errorMessage ?? "")
         }
     }
 
@@ -261,15 +258,6 @@ struct RoomCapturesView: View {
     }
 
     /// Follows captures in processing while the list is open.
-    private func pollProcessing() async {
-        while !Task.isCancelled {
-            if uploads.hasProcessingCaptures {
-                await uploads.refreshProcessing()
-            }
-            try? await Task.sleep(for: .seconds(30))
-        }
-    }
-
     private func export(_ capture: CosmicCaptureSummary) {
         exportingID = capture.id
         Task {

@@ -58,6 +58,18 @@ final class AppModel {
         }
     }
 
+    /// Refreshes the processing state every 30 s while a capture is with
+    /// Echo-3, so the accessory and the Captures tab notice when a room is done.
+    /// Runs for the lifetime of the shell.
+    func pollProcessing() async {
+        while !Task.isCancelled {
+            if uploads.hasProcessingCaptures {
+                await uploads.refreshProcessing()
+            }
+            try? await Task.sleep(for: .seconds(30))
+        }
+    }
+
     // MARK: - Running work (bottom accessory)
 
     /// One capture that is uploading or processing, for the accessory bar

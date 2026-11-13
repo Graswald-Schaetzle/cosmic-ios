@@ -25,6 +25,8 @@ struct cosmic_iosApp: App {
                     LoginView()
                 }
             }
+            // The app is always dark: it frames 3D content (see docs/ios-redesign-plan.md).
+            .preferredColorScheme(.dark)
             .task {
                 await authService.restoreSession()
             }
