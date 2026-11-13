@@ -218,6 +218,46 @@ ARKit-Konfiguration wie in der "Full"-Variante des Prototyps: `sceneReconstructi
 - Offen in Schritt 3: Test auf dem iPhone, danach Entfernen des alten RoomPlan-Scans.
 - iOS 18 als Mindestversion ist bestätigt.
 
+## Mehrere Räume im Viewer und Neuaufnahme einzelner Räume
+
+Stand: Entscheidungen des Nutzers, Ergänzung zum Plan. Gilt für Backend, Frontend und iOS.
+
+### Warum ein Splat pro Raum bei geschlossenen Türen
+
+1. **Einzelne Räume neu aufnehmen.** Ändert sich in einem Raum etwas (Möbel, Farbe, Umbau), muss nur dieser
+   Raum neu gefilmt werden, nicht der ganze Space.
+2. **Kein veralteter Nachbarraum im Splat.** Bei geschlossenen Türen sieht ein Capture den Nachbarraum nicht.
+   Bei offenen Türen steckt der Nachbarraum im alten Zustand mit im Splat, und die Räume wären nach einer
+   Neuaufnahme eines einzelnen Raums nicht mehr synchron.
+3. **Dateigröße und Ladezeit.** Kleinere Splats pro Raum bleiben unter den Capture-Grenzen (Frames, Dateigröße,
+   Verarbeitungsdauer) und laden im Browser schneller. Gemessen ist das noch nicht.
+
+Ein Streaming-Format für riesige Szenen (Nachladen von Teilen eines einzigen Splats) ist nicht nötig und wurde nicht
+bewertet. Das Nachladen pro Raum liefert denselben Effekt und passt zur Neuaufnahme einzelner Räume.
+
+### Verhalten im Web-Viewer
+
+- Pro Space ist ein **Startraum festlegbar**. Ohne Festlegung gilt der Raum, in dem das **allererste Foto** des Spaces
+  aufgenommen wurde (erstes Bild des ältesten Captures).
+- Der Startraum lädt zuerst. Jeder weitere Raum lädt nach, sobald der Nutzer an der Tür bzw. Schwelle zum
+  nächsten Raum steht oder ihn betritt. Nicht alle Räume auf einmal laden.
+- Heute zeigt der Viewer (`SplatScene` mit `splatUrl`/`collisionUrl`) nur einen Splat und muss umgebaut werden.
+
+### Räume zueinander ausrichten
+
+**Variante A (bisheriger Plan):** Die ARKit-Session läuft zwischen den Räumen weiter, der Nutzer markiert die Tür
+zum nächsten Raum (Raycast auf das LiDAR-Mesh), das Backend berechnet daraus die Lage der Räume.
+
+**Variante B (Fallback und Ergänzung, Idee des Nutzers):** Die App führt den Nutzer über die Oberfläche:
+1. Beim Verlassen markiert er die Tür, durch die er in den nächsten Raum geht.
+2. Im nächsten Raum fordert ihn die App auf, **direkt hinter der Tür zu starten** (Tür schließen, dann aufnehmen).
+3. Tür-Markierung und Startposition ergeben eine grobe Zuordnung, wo ein Raum endet und der nächste beginnt.
+   Sie funktioniert auch dann, wenn das ARKit-Tracking beim Gang durch die Tür abreißt.
+
+Wie genau diese grobe Lage in Splat-Koordinaten übersetzt werden kann, hängt weiter davon ab, in welchem
+Koordinatensystem Echo-3 den Splat zurückgibt (offener Punkt unten). Die Feinausrichtung läuft bei Bedarf über das
+LiDAR-Mesh und die Türanker.
+
 ## Offene Punkte
 
 - **Koordinatensystem der Ausgabe**: Die Doku sagt nicht, ob Echo-3 den Splat im

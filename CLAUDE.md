@@ -30,8 +30,10 @@ Kurzfassung:
   Kalibrierung, als ZIP) und zeichnet parallel LiDAR-Mesh und Tiefe auf.
 - Das Backend schickt das ZIP an die Echo-3-API von SpAItial und importiert den fertigen Splat
   (`.spz`) in den Space. Der API-Key liegt nur im Backend, nie in der App.
-- Am Ende eines Raums markiert der User die Tür zum nächsten Raum; darüber werden die Räume
-  später automatisch zusammengefügt.
+- Am Ende eines Raums markiert der User die Tür zum nächsten Raum und startet im nächsten Raum
+  direkt hinter der Tür (Tür geschlossen); darüber werden die Räume später zusammengefügt.
+  Warum ein Splat pro Raum und wie der Viewer die Räume nachlädt: siehe Plan, Abschnitt
+  "Mehrere Räume im Viewer und Neuaufnahme einzelner Räume".
 - Capture-Kern und LiDAR-Netz kommen aus dem Open-Source-Prototyp
   `spaitial-ai/spaitial-capture-prototype` (MIT-0).
 
