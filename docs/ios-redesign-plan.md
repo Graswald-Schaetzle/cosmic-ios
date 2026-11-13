@@ -1,6 +1,38 @@
 # Plan: Redesign der Cosmic-iOS-App im Liquid-Glass-Stil (iOS 26)
 
-Stand: Phase 0 (Prototyp) fertig, Phase 1 (Fundament) umgesetzt, aber noch nicht in Xcode gebaut.
+## Übergabe / Weitermachen (für neue Sessions zuerst lesen)
+
+**Stand (13.11.2026):** Phase 0 (Prototyp) fertig. Phase 1 (Fundament) committet in `c47e7a3` auf Branch
+`claude/compassionate-noether-mnwp3i`, **aber noch nie kompiliert** (entstanden in einer Cloud-Session ohne Xcode).
+
+**Prototyp:** `docs/design/cosmic-ios-redesign.html` im Browser öffnen (klickbar, maßgeblich für Layout, Texte
+und Abstände). Online-Kopie: https://claude.ai/artifact/5zKVdj8vnpHrdXnLGKYJ49 (privat). Im Prototyp ist der
+Akzent "Silber" der entschiedene; Supernova/Nebula/Pulsar sind verworfene Varianten.
+
+**Entschieden (nicht neu diskutieren):**
+- iOS 26 als Mindestversion, Liquid Glass direkt aus SwiftUI, keine Fallback-Pfade, keine UI-Library.
+- App = Scan-App + Space-Begleiter (Home, Captures, Scan, Profil). Aufgaben/Dokumente bleiben in der Web-App.
+- 3D-Ansicht über den eingebetteten Web-Splat-Viewer (WKWebView), nicht nativ.
+- Neutral: Glasflächen ohne Tönung, graue Chips, kein Orange. Einziger Akzent mattes Silber (kein Chrome-Glanz,
+  kein harter Lichtstrich), dunkle Schrift darauf, nur auf Haupt-Button, Scan-Button, aktivem Tab.
+- Alle UI-Texte englisch.
+- Live-Scan ohne Prozentwerte für Wände/Boden/Decke; nur LiDAR-Netz und ein Hinweis aus der Lückenerkennung.
+
+**Phase 1 enthält:** iOS 26 in `project.pbxproj` und `Packages/CosmicCapture/Package.swift` (swift-tools 6.2,
+`.iOS(.v26)`); `Cosmic/CosmicDesign.swift` (Tokens, `.cosmicPrimary`, `.cosmicSecondary`, `cosmicGlassPanel()`);
+`CosmicGlass.swift` gelöscht; `CameraChromeBackground`/`GlassControlBackground` auf `glassEffect`; `Theme.primary`
+= Silber; `cosmic-ios/AppModel.swift` (Spaces, gemerkte Auswahl, Captures, `activeWork` für die Upload-Leiste),
+noch nicht in der App verwendet.
+
+**Nächste Schritte:**
+1. Bauen und testen: im Ordner `Packages/CosmicCapture`
+   `xcodebuild -scheme CosmicCapture -destination 'platform=iOS Simulator,name=iPhone 17' test`, danach App für
+   Simulator und Gerät bauen. Compilerfehler zuerst beheben (v. a. `glassEffect`-Aufrufe, Swift-6-Concurrency).
+2. Phase 2 (App-Shell) laut Abschnitt unten: `RootView.swift` mit `TabView` (Home, Captures), abgesetztem
+   Scan-Button, `.tabViewBottomAccessory` aus `AppModel.activeWork`, Space-Wechsel per `.toolbarTitleMenu`,
+   Profil-Sheet; ersetzt `CosmicHomeView` in `ContentView.swift`.
+3. Danach Phasen 3–6 in der Reihenfolge unten. Backend/Frontend-Abhängigkeiten (Raumliste, Embed-Modus des
+   Viewers) jeweils zuerst in `cosmic-backend` bzw. `cosmic-webapp-frontend`.
 
 ## Context
 

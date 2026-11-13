@@ -1,0 +1,720 @@
+<title>Cosmic iOS Redesign</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: Erklärspalte links, klickbares iPhone rechts; auf dem Handy untereinander. Bewusst nur dunkel (3D-Inhalt, App ist immer dunkel). */
+:root{
+  --page:#0b0c0f; --page-2:#14161b; --ink:#f5f5f7; --ink-2:rgba(245,245,247,.68); --ink-3:rgba(245,245,247,.42);
+  --line:rgba(255,255,255,.10); --ac-grad:linear-gradient(110deg,#6E56FF 0%,#C14FE0 55%,#3EE6D2 115%); --accent:#A98BFF; --accent-ink:#fff; --accent-soft:rgba(169,139,255,.22);
+  --ok:#34C759; --warn:#FF9500; --bad:#FF3B30; --blue:#3380FF;
+  --font:-apple-system,"SF Pro Text","SF Pro Display",Inter,system-ui,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,monospace;
+  color-scheme:dark;
+}
+:root[data-accent="nebula"]{--ac-grad:linear-gradient(110deg,#FF5C8A 0%,#B65FD6 55%,#8A6BFF 100%);--accent:#FF86A8;--accent-ink:#fff;--accent-soft:rgba(255,92,138,.22)}
+:root[data-accent="pulsar"]{--ac-grad:linear-gradient(110deg,#2FD8C4 0%,#7FF5E6 100%);--accent:#3EE6D2;--accent-ink:#00231f;--accent-soft:rgba(62,230,210,.2)}
+html,body{background:var(--page);color:var(--ink)}
+.prom-glass{background:var(--ac-grad);border:.5px solid rgba(255,255,255,.45);box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 10px 28px var(--accent-soft);color:var(--accent-ink)}
+body{font-family:var(--font);-webkit-font-smoothing:antialiased;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 48px}
+.wrap{max-width:1120px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:48px;align-items:start}
+@media (max-width:900px){.wrap{grid-template-columns:minmax(0,1fr);gap:28px}.side{order:2}.stage-col{order:1}}
+.side{min-width:0;display:flex;flex-direction:column;gap:22px;position:sticky;top:24px}
+@media (max-width:900px){.side{position:static}}
+.eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);font-weight:600}
+h1{font-size:34px;line-height:1.1;font-weight:800;letter-spacing:-.02em;margin:6px 0 10px;text-wrap:balance}
+.lead{color:var(--ink-2);font-size:15px;line-height:1.55;max-width:60ch;margin:0}
+.nav{display:flex;flex-wrap:wrap;gap:8px}
+.nav button{font:inherit;font-size:13px;font-weight:600;color:var(--ink);background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:100px;padding:8px 13px;cursor:pointer}
+.nav button:hover{background:rgba(255,255,255,.12)}
+.nav button[aria-current="true"]{background:var(--ink);color:#000;border-color:var(--ink)}
+.nav .grp{width:100%;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin-top:4px}
+.note{border-top:1px solid var(--line);padding-top:18px;display:flex;flex-direction:column;gap:10px}
+.note h2{font-size:18px;margin:0;font-weight:700}
+.note p{margin:0;color:var(--ink-2);font-size:14px;line-height:1.55;max-width:60ch}
+.api{display:flex;flex-wrap:wrap;gap:6px}
+.api code{font-family:var(--mono);font-size:12px;background:var(--accent-soft);color:var(--accent);border-radius:6px;padding:3px 7px}
+.opts{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--ink-2);flex-wrap:wrap}
+.seg{display:inline-flex;background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:100px;padding:3px}
+.seg button{font:inherit;font-size:12px;font-weight:600;border:0;background:none;color:var(--ink-2);padding:5px 11px;border-radius:100px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:rgba(255,255,255,.16);color:var(--ink)}
+.hint{font-size:12px;color:var(--ink-3)}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ---------- Phone ---------- */
+.stage-col{display:flex;justify-content:center;min-width:0}
+.stage{width:414px;max-width:100%;position:relative}
+.device{width:414px;height:868px;transform-origin:top left;position:absolute;left:0;top:0;border-radius:64px;padding:12px;background:linear-gradient(145deg,#3a3c42,#1b1c20 40%,#2c2e33);box-shadow:0 0 0 1px #4a4c52,0 40px 80px rgba(0,0,0,.6)}
+.phone{position:relative;width:390px;height:844px;border-radius:52px;overflow:hidden;background:#000;font-family:var(--font);color:#fff;font-size:17px}
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:124px;height:36px;border-radius:20px;background:#000;z-index:60}
+.status{position:absolute;top:0;left:0;right:0;height:54px;display:flex;justify-content:space-between;align-items:center;padding:6px 34px 0 46px;font-size:16px;font-weight:600;z-index:55;pointer-events:none}
+.status .r{display:flex;gap:6px;align-items:center}
+.homebar{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:136px;height:5px;border-radius:3px;background:rgba(255,255,255,.85);z-index:60;pointer-events:none}
+.screen{position:absolute;inset:0;display:none}
+.screen.on{display:block}
+.bgc{position:absolute;inset:0;width:100%;height:100%;display:block}
+.scroll{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+.svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* Liquid Glass */
+.glass{background:linear-gradient(180deg,rgba(255,255,255,.17),rgba(255,255,255,.06));-webkit-backdrop-filter:blur(16px) saturate(180%);backdrop-filter:blur(16px) saturate(180%);border:.5px solid rgba(255,255,255,.24);box-shadow:inset 0 1px 0 rgba(255,255,255,.38),inset 0 -1px 1px rgba(255,255,255,.06),0 10px 30px rgba(0,0,0,.28)}
+.glass-dark{background:linear-gradient(180deg,rgba(60,60,66,.62),rgba(30,30,34,.58));-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);border:.5px solid rgba(255,255,255,.18);box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 20px 50px rgba(0,0,0,.45)}
+.gbtn{font:inherit;color:#fff;border-radius:100px;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;font-size:17px;font-weight:600;min-height:50px;padding:0 22px}
+.gbtn.prom{background:var(--ac-grad);color:var(--accent-ink);border:.5px solid rgba(255,255,255,.45);box-shadow:inset 0 1px 0 rgba(255,255,255,.5),inset 0 -2px 6px rgba(0,0,0,.18),0 10px 28px var(--accent-soft)}
+.gbtn.full{width:100%}
+.circ{width:44px;height:44px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:#fff;cursor:pointer;padding:0;font:inherit}
+.pressable{transition:transform .18s cubic-bezier(.3,1.6,.5,1)}
+.pressable:active{transform:scale(.94)}
+
+/* Large title nav */
+.navbar{display:flex;align-items:flex-end;justify-content:space-between;padding:58px 20px 6px;gap:12px}
+.ltitle{font-size:34px;font-weight:800;letter-spacing:-.02em;display:flex;align-items:center;gap:6px;background:none;border:0;color:#fff;font-family:var(--font);padding:0;cursor:pointer;text-align:left}
+.ltitle .svg{width:20px;height:20px;stroke-width:2.6;color:rgba(255,255,255,.55);margin-top:6px}
+.sub{font-size:15px;color:rgba(255,255,255,.6);padding:0 20px 14px}
+.avatar{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;color:#fff;cursor:pointer;padding:0;font-family:var(--font)}
+
+/* Home */
+.hero{margin:4px 16px 0;height:230px;border-radius:30px;overflow:hidden;position:relative;cursor:pointer}
+.hero canvas{width:100%;height:100%;display:block}
+.hero .tag{position:absolute;left:12px;top:12px;font-size:12px;font-weight:600;padding:6px 10px;border-radius:100px;display:flex;gap:6px;align-items:center}
+.hero .open{position:absolute;right:12px;top:12px;min-height:40px;font-size:15px;padding:0 16px}
+.hero .cap{position:absolute;left:16px;bottom:16px;display:block;padding:0;border:0}
+.hero .cap b{display:block;font-size:22px;font-weight:700;text-shadow:0 1px 12px rgba(0,0,0,.4)}
+.hero .cap span{font-size:13px;color:rgba(255,255,255,.85)}
+.floors{margin:18px 16px 4px;display:flex;padding:4px;border-radius:100px;background:rgba(255,255,255,.08)}
+.floors button{flex:1;font:inherit;font-size:14px;font-weight:600;color:rgba(255,255,255,.7);border:0;background:none;border-radius:100px;padding:9px 0;cursor:pointer}
+.floors button.on{background:rgba(255,255,255,.2);color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.3)}
+.sect{display:flex;justify-content:space-between;align-items:baseline;padding:18px 20px 10px}
+.sect h3{margin:0;font-size:20px;font-weight:700}
+.sect span{font-size:15px;color:rgba(255,255,255,.55)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 16px}
+.tile{border-radius:24px;overflow:hidden;background:#1c1c1f;cursor:pointer;display:flex;flex-direction:column;border:0;padding:0;color:#fff;font-family:var(--font);text-align:left}
+.tile canvas{width:100%;height:104px;display:block}
+.tile .meta{padding:10px 12px 12px;display:flex;flex-direction:column;gap:6px}
+.tile .nm{font-size:16px;font-weight:600}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;border-radius:100px;padding:4px 9px;width:max-content}
+.chip.ok,.chip.run,.chip.up,.chip.loc{background:rgba(255,255,255,.1);color:rgba(255,255,255,.8)}
+.chip.ok .dot{background:#fff}
+.chip.run{color:#fff}
+.chip.loc{color:rgba(255,255,255,.55)}
+.dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+.bar{height:4px;border-radius:2px;background:rgba(255,255,255,.14);overflow:hidden}
+.bar i{display:block;height:100%;background:currentColor;border-radius:2px}
+.addtile{border:1.5px dashed rgba(255,255,255,.25);background:transparent;min-height:168px;align-items:center;justify-content:center;gap:8px;color:rgba(255,255,255,.8);font-size:15px;font-weight:600;flex-direction:column;display:flex}
+.addtile .svg{width:28px;height:28px}
+.spacer{height:200px}
+
+/* bottom chrome */
+.bottom{position:absolute;left:0;right:0;bottom:0;padding:0 16px 26px;display:flex;flex-direction:column;gap:10px;z-index:40;transition:all .35s cubic-bezier(.3,1.3,.5,1)}
+.bottom::before{content:"";position:absolute;inset:-60px 0 0;background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.55));pointer-events:none;z-index:-1}
+.acc{border-radius:100px;height:48px;display:flex;align-items:center;gap:10px;padding:0 8px 0 16px;cursor:pointer;color:#fff;font:inherit;font-size:15px;text-align:left}
+.acc .t{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.acc .t b{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.acc .t .bar{color:var(--accent)}
+.acc .pct{font-size:13px;color:rgba(255,255,255,.7);font-variant-numeric:tabular-nums;padding-right:8px}
+.spin{width:18px;height:18px;border-radius:50%;border:2px solid rgba(255,255,255,.18);border-top-color:var(--accent);animation:sp 1s linear infinite;flex:none}
+@keyframes sp{to{transform:rotate(360deg)}}
+.row{display:flex;gap:10px;align-items:center}
+.tabbar{flex:1;height:62px;border-radius:100px;display:flex;padding:4px;gap:2px}
+.tab{flex:1;border:0;background:none;color:#fff;font-family:var(--font);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:10px;font-weight:600;border-radius:100px;cursor:pointer}
+.tab .svg{width:24px;height:24px}
+.tab.on{background:rgba(255,255,255,.14);color:var(--accent)}
+.scanbtn{width:62px;height:62px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer;flex:none;padding:0}
+.scanbtn .svg{width:26px;height:26px}
+.bottom.min{flex-direction:row-reverse;align-items:center}
+.bottom.min .row{flex:none}
+.bottom.min .tabbar{flex:none;width:62px}
+.bottom.min .tab:not(.on){display:none}
+.bottom.min .tab span{display:none}
+.bottom.min .acc{flex:1;min-width:0}
+.bottom.min .row .scanbtn{display:none}
+
+/* Room viewer */
+.topbar{position:absolute;top:54px;left:16px;right:16px;display:flex;justify-content:space-between;align-items:center;z-index:20}
+.pilltitle{border-radius:100px;padding:10px 16px;font-size:15px;font-weight:600}
+.roomcard{position:absolute;left:12px;right:12px;bottom:28px;border-radius:34px;padding:18px;display:flex;flex-direction:column;gap:12px;z-index:20}
+.roomcard h4{margin:0;font-size:22px;font-weight:700}
+.roomcard .m{font-size:13px;color:rgba(255,255,255,.7)}
+.chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+.rchip{font:inherit;font-size:13px;font-weight:600;border-radius:100px;padding:7px 12px;border:0;cursor:pointer;background:rgba(255,255,255,.12);color:rgba(255,255,255,.85);white-space:nowrap}
+.rchip.on{background:#fff;color:#000}
+.btnrow{display:flex;gap:10px}
+.btnrow .gbtn{flex:1;font-size:15px;min-height:46px;padding:0 12px}
+.embed{position:absolute;top:110px;left:50%;transform:translateX(-50%);font-size:11px;color:rgba(255,255,255,.7);padding:5px 10px;border-radius:100px;z-index:20;white-space:nowrap}
+
+/* Sheets & overlays */
+.dim{position:absolute;inset:0;background:rgba(0,0,0,.42);z-index:70}
+.sheet{position:absolute;left:8px;right:8px;bottom:8px;border-radius:40px;z-index:71;padding:8px 20px 26px;display:flex;flex-direction:column;gap:14px;animation:up .38s cubic-bezier(.25,1.2,.4,1)}
+@keyframes up{from{transform:translateY(40%);opacity:0}}
+.grab{width:38px;height:5px;border-radius:3px;background:rgba(255,255,255,.3);margin:4px auto 2px}
+.sheethead{display:flex;justify-content:space-between;align-items:center}
+.sheethead h5{margin:0;font-size:20px;font-weight:700}
+.field{border-radius:16px;background:rgba(0,0,0,.25);border:.5px solid rgba(255,255,255,.12);padding:12px 14px;display:flex;flex-direction:column;gap:2px}
+.field label{font-size:12px;color:rgba(255,255,255,.55)}
+.field input{all:unset;font-size:17px;color:#fff}
+.list{border-radius:20px;background:rgba(0,0,0,.22);overflow:hidden}
+.li{display:flex;align-items:center;gap:12px;padding:12px 14px;font-size:16px;border-bottom:.5px solid rgba(255,255,255,.08)}
+.li:last-child{border-bottom:0}
+.li .grow{flex:1;min-width:0}
+.li .s{font-size:13px;color:rgba(255,255,255,.55)}
+.sw{width:51px;height:31px;border-radius:16px;background:var(--ac-grad);position:relative;flex:none;cursor:pointer;border:0;padding:0}
+.sw::after{content:"";position:absolute;top:2px;left:22px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.25);transition:left .2s}
+.sw[aria-checked="false"]{background:rgba(120,120,128,.4)}
+.sw[aria-checked="false"]::after{left:2px}
+.info{display:flex;gap:10px;align-items:flex-start;font-size:13px;line-height:1.4;color:rgba(255,255,255,.8);background:rgba(255,255,255,.08);border-radius:16px;padding:10px 12px}
+.info .svg{width:18px;height:18px;color:var(--accent);margin-top:1px}
+.menu{position:absolute;top:106px;left:16px;width:250px;border-radius:24px;z-index:71;padding:6px;animation:pop .28s cubic-bezier(.25,1.4,.4,1);transform-origin:top left}
+@keyframes pop{from{transform:scale(.6);opacity:0}}
+.mi{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:16px;font-size:16px;cursor:pointer;border:0;background:none;color:#fff;width:100%;font-family:var(--font);text-align:left}
+.mi:hover{background:rgba(255,255,255,.1)}
+.mi .grow{flex:1}
+.mi .s{font-size:12px;color:rgba(255,255,255,.55);display:block}
+.msep{height:.5px;background:rgba(255,255,255,.15);margin:4px 8px}
+.alert{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:290px;border-radius:32px;z-index:71;padding:22px 18px 16px;text-align:center;display:flex;flex-direction:column;gap:8px;animation:pop2 .3s cubic-bezier(.25,1.4,.4,1)}
+@keyframes pop2{from{transform:translate(-50%,-50%) scale(.8);opacity:0}}
+.alert h6{margin:0;font-size:17px;font-weight:700}
+.alert p{margin:0;font-size:14px;color:rgba(255,255,255,.75);line-height:1.4}
+.alert .btnrow{margin-top:8px}
+.toast{position:absolute;top:60px;left:50%;transform:translateX(-50%);border-radius:100px;padding:10px 16px;font-size:14px;font-weight:600;z-index:80;display:flex;gap:8px;align-items:center;white-space:nowrap;animation:drop .4s cubic-bezier(.25,1.4,.4,1)}
+@keyframes drop{from{transform:translate(-50%,-30px);opacity:0}}
+
+/* Captures list */
+.group{margin:0 16px 8px}
+.group h4{font-size:13px;font-weight:600;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.04em;margin:18px 4px 8px}
+.cap{display:flex;gap:12px;align-items:center;padding:10px;border-bottom:.5px solid rgba(255,255,255,.08)}
+.cap:last-child{border-bottom:0}
+.cap canvas{width:64px;height:64px;border-radius:14px;flex:none}
+.cap .grow{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.cap b{font-size:16px;font-weight:600}
+.cap .s{font-size:13px;color:rgba(255,255,255,.55)}
+.mini{font:inherit;font-size:14px;font-weight:600;min-height:34px;padding:0 14px;border-radius:100px;color:#fff;cursor:pointer}
+.mini.prom{background:var(--ac-grad);color:var(--accent-ink);border:0}
+.card{border-radius:24px;background:#1c1c1f}
+
+/* Live scan */
+.scanchrome{position:absolute;inset:0;z-index:20}
+.hintpill{position:absolute;top:114px;left:50%;transform:translateX(-50%);border-radius:100px;padding:10px 16px;font-size:15px;font-weight:600;display:flex;gap:8px;align-items:center;white-space:nowrap}
+.hintpill .svg{color:var(--accent);width:18px;height:18px}
+.xbtn{position:absolute;top:58px;left:16px}
+.fc{position:absolute;top:58px;right:16px;height:44px;border-radius:100px;padding:0 14px;display:flex;align-items:center;font-size:14px;font-weight:600;font-variant-numeric:tabular-nums}
+.cov{position:absolute;left:16px;right:16px;bottom:150px;border-radius:26px;padding:12px 16px;display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.cov div{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:600}
+.cov .lbl{display:flex;justify-content:space-between;color:rgba(255,255,255,.85)}
+.cov .lbl span:last-child{font-variant-numeric:tabular-nums;color:rgba(255,255,255,.6)}
+.cov .bar{height:5px}
+.shutterrow{position:absolute;left:0;right:0;bottom:44px;display:flex;justify-content:center;align-items:center;gap:36px}
+.shutter{width:84px;height:84px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.shutter i{width:34px;height:34px;border-radius:10px;background:#FF3B30;display:block;transition:all .3s cubic-bezier(.3,1.5,.5,1)}
+.shutter.idle i{width:64px;height:64px;border-radius:50%}
+.side-btn{width:52px;height:52px}
+.rec{position:absolute;top:166px;left:50%;transform:translateX(-50%);font-size:13px;font-weight:600;display:flex;gap:6px;align-items:center;color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.6)}
+.rec i{width:8px;height:8px;border-radius:50%;background:#FF3B30;animation:bl 1.2s infinite}
+@keyframes bl{50%{opacity:.25}}
+.bottompanel{position:absolute;left:12px;right:12px;bottom:28px;border-radius:34px;padding:18px;display:flex;flex-direction:column;gap:12px;z-index:20}
+.bottompanel h4{margin:0;font-size:22px;font-weight:700}
+.bottompanel p{margin:0;font-size:14px;color:rgba(255,255,255,.75);line-height:1.45}
+.gap{display:flex;gap:10px;align-items:center;font-size:14px}
+.gap i{width:10px;height:10px;border-radius:50%;background:#FF6B6B;box-shadow:0 0 0 4px rgba(255,107,107,.25);flex:none}
+.reticle{position:absolute;z-index:15;border:2.5px solid var(--accent);border-radius:6px;box-shadow:0 0 0 2000px rgba(0,0,0,.18),0 0 24px var(--accent-soft);cursor:pointer;transition:all .3s}
+.reticle .lab{position:absolute;top:-34px;left:50%;transform:translateX(-50%);background:var(--ac-grad);color:var(--accent-ink);font-size:12px;font-weight:700;border-radius:100px;padding:5px 10px;white-space:nowrap}
+.reticle.set{border-style:solid;background:var(--accent-soft)}
+
+/* Login */
+.loginbg{position:absolute;inset:-20px;width:calc(100% + 40px);height:calc(100% + 40px);animation:kb 24s ease-in-out infinite alternate}
+@keyframes kb{to{transform:scale(1.08) translate(-8px,6px)}}
+.logo{position:absolute;top:140px;left:0;right:0;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px}
+.logo .mark{width:72px;height:72px;border-radius:22px;display:flex;align-items:center;justify-content:center}
+.logo .mark .svg{width:38px;height:38px;color:#fff;stroke-width:1.6}
+.logo b{font-size:40px;font-weight:800;letter-spacing:-.03em;text-shadow:0 2px 20px rgba(0,0,0,.35)}
+.logo span{font-size:17px;color:rgba(255,255,255,.9);text-shadow:0 1px 10px rgba(0,0,0,.4)}
+.loginsheet{position:absolute;left:12px;right:12px;bottom:28px;border-radius:38px;padding:20px;display:flex;flex-direction:column;gap:12px}
+.fine{font-size:12px;color:rgba(255,255,255,.55);text-align:center}
+
+/* Profile */
+.prof{display:flex;gap:14px;align-items:center}
+.prof .avatar{width:60px;height:60px;font-size:22px;background:var(--ac-grad);color:#fff;cursor:default}
+.li .ic{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:none}
+.li .ic .svg{width:18px;height:18px;color:#fff}
+.chev{color:rgba(255,255,255,.3);width:16px;height:16px}
+
+
+/* Akzent: Silber (matt, ohne Lichtkante) */
+:root[data-accent="silver"]{--ac-grad:linear-gradient(180deg,#eceef1 0%,#d9dce0 60%,#cbcfd4 100%);--accent:#D9DCE0;--accent-ink:#17181b;--accent-soft:rgba(255,255,255,.12)}
+:root[data-accent="silver"] .prom-glass,:root[data-accent="silver"] .gbtn.prom,:root[data-accent="silver"] .mini.prom{border:.5px solid rgba(255,255,255,.45);box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 8px 22px rgba(0,0,0,.3)}
+:root[data-accent="silver"] .prom-glass .svg{color:#17181b}
+:root[data-accent="silver"] .tab.on{background:var(--ac-grad);color:#17181b;box-shadow:inset 0 1px 0 rgba(255,255,255,.5)}
+[hidden]{display:none!important}
+.lang-en .de{display:none}.lang-de .en{display:none}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-house" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h5v-5.5h4V20h5V9.5"/></symbol>
+  <symbol id="i-stack" viewBox="0 0 24 24"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M7 5h10M9 2.5h6"/></symbol>
+  <symbol id="i-scan" viewBox="0 0 24 24"><path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/><path d="M12 7.5 16 9.8v4.4L12 16.5 8 14.2V9.8z"/><path d="M8 9.8l4 2.3 4-2.3M12 12.1v4.4"/></symbol>
+  <symbol id="i-chevd" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-chevl" viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></symbol>
+  <symbol id="i-chevr" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-cube" viewBox="0 0 24 24"><path d="M12 2.8 20 7.4v9.2L12 21.2 4 16.6V7.4z"/><path d="M4 7.4l8 4.6 8-4.6M12 12v9.2"/></symbol>
+  <symbol id="i-door" viewBox="0 0 24 24"><path d="M5 21V4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v17M3 21h18"/><circle cx="15" cy="12.5" r=".9"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.6v.2"/></symbol>
+  <symbol id="i-slow" viewBox="0 0 24 24"><path d="M10.3 3.9 2.6 17.2A2 2 0 0 0 4.3 20h15.4a2 2 0 0 0 1.7-2.8L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4.5M12 16.8v.2"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></symbol>
+  <symbol id="i-person" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20.5c1.5-4 4.5-6 8-6s6.5 2 8 6"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5zM4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/></symbol>
+  <symbol id="i-out" viewBox="0 0 24 24"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 8l-4 4 4 4M6 12h10"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18"/></symbol>
+  <symbol id="i-rotate" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.4-5.7M20 4v5h-5"/></symbol>
+  <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></symbol>
+</svg>
+
+<div class="wrap">
+  <section class="side">
+    <div>
+      <div class="eyebrow">Entwurf · iOS 26 Liquid Glass</div>
+      <h1>Cosmic iOS Redesign</h1>
+      <p class="lead">Klickbarer Prototyp der neuen App: Zuhause mit Räumen, Raum-für-Raum-Scan mit Tür-Verknüpfung, Uploads mit Fortschritt und eingebetteter 3D-Ansicht. Alles im iPhone ist anklickbar; links springst du direkt zu einem Screen.</p>
+    </div>
+    <nav class="nav" aria-label="Screens">
+      <span class="grp">App</span>
+      <button data-go="login">Anmelden</button>
+      <button data-go="home">Zuhause</button>
+      <button data-go="menu">Space wechseln</button>
+      <button data-go="room">Raum (3D)</button>
+      <button data-go="captures">Aufnahmen</button>
+      <button data-go="profile">Profil</button>
+      <span class="grp">Scan-Ablauf</span>
+      <button data-go="roomcard">1 · Raum-Karte</button>
+      <button data-go="live">2 · Live-Scan</button>
+      <button data-go="review">3 · Review</button>
+      <button data-go="door">4 · Tür markieren</button>
+      <button data-go="next">5 · Nächster Raum</button>
+    </nav>
+    <div class="note" id="note" aria-live="polite">
+      <h2 id="n-t"></h2>
+      <p id="n-d"></p>
+      <div class="api" id="n-api"></div>
+    </div>
+    <div class="opts">
+      <span>Akzentfarbe</span>
+      <span class="seg" role="group" aria-label="Akzentfarbe">
+        <button data-acc="silver" aria-pressed="true">Silber</button>
+        <button data-acc="supernova" aria-pressed="false">Supernova</button>
+        <button data-acc="nebula" aria-pressed="false">Nebula</button>
+        <button data-acc="pulsar" aria-pressed="false">Pulsar</button>
+      </span>
+    </div>
+    <p class="hint" id="acc-note"></p>
+    <p class="hint">Im Browser ist Liquid Glass mit Unschärfe und Lichtkanten nachgebaut. Auf dem iPhone übernimmt SwiftUI das echte Material, inklusive Lichtbrechung, Bewegung und der Einstellungen „Transparenz reduzieren“ und „Kontrast erhöhen“. Die Räume sind generierte Platzhalter im Splat-Look.</p>
+  </section>
+
+  <div class="stage-col">
+    <div class="stage" id="stage">
+      <div class="device" id="device">
+        <div class="phone lang-en" id="phone">
+          <div class="island"></div>
+          <div class="status"><span>9:41</span><span class="r">
+            <svg width="18" height="12" viewBox="0 0 18 12" fill="#fff"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>
+            <svg width="26" height="12" viewBox="0 0 26 12"><rect x=".5" y=".5" width="22" height="11" rx="3.5" fill="none" stroke="#fff" opacity=".5"/><rect x="2" y="2" width="17" height="8" rx="2" fill="#fff"/><rect x="23.5" y="4" width="1.8" height="4" rx=".9" fill="#fff" opacity=".5"/></svg>
+          </span></div>
+
+          <!-- LOGIN -->
+          <div class="screen" id="s-login">
+            <canvas class="loginbg" data-scene="living" data-seed="7" width="430" height="884"></canvas>
+            <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.15),rgba(0,0,0,0) 40%,rgba(0,0,0,.5))"></div>
+            <div class="logo">
+              <div class="mark prom-glass"><svg class="svg"><use href="#i-cube"/></svg></div>
+              <b>Cosmic</b>
+              <span>Your home, captured once.</span>
+            </div>
+            <form class="loginsheet glass-dark" id="loginform">
+              <div class="field"><label for="em">Email</label><input id="em" type="email" value="name@example.com" autocomplete="off"></div>
+              <div class="field"><label for="pw">Password</label><input id="pw" type="password" value="secretsecret" autocomplete="off"></div>
+              <button class="gbtn prom full pressable" type="submit">Sign In</button>
+              <div class="fine">Same account as the web app</div>
+            </form>
+          </div>
+
+          <!-- HOME -->
+          <div class="screen" id="s-home">
+            <div class="scroll" id="homescroll">
+              <div class="navbar">
+                <button class="ltitle" id="spacebtn" aria-haspopup="menu">City Apartment<svg class="svg"><use href="#i-chevd"/></svg></button>
+                <button class="avatar glass pressable" data-open="profile" aria-label="Profile">M</button>
+              </div>
+              <div class="sub">3 floors · 7 rooms · 5 ready</div>
+              <div class="hero" data-go="room" role="button" tabindex="0">
+                <canvas data-scene="living" data-seed="3" width="358" height="230"></canvas>
+                <span class="tag glass"><svg class="svg" style="width:14px;height:14px"><use href="#i-house"/></svg>Start room</span>
+                <div class="cap"><b>Living Room</b><span>Ground floor · captured Nov 12</span></div>
+                <span class="gbtn glass open"><svg class="svg" style="width:18px;height:18px"><use href="#i-cube"/></svg>Open in 3D</span>
+              </div>
+              <div class="floors" role="tablist" aria-label="Floor">
+                <button class="on">Ground · 4</button><button>1st · 3</button><button>Basement</button>
+              </div>
+              <div class="sect"><h3>Rooms</h3><span>Ground floor</span></div>
+              <div class="grid">
+                <button class="tile pressable" data-go="room"><canvas data-scene="living" data-seed="3" width="173" height="104"></canvas><div class="meta"><span class="nm">Living Room</span><span class="chip ok"><i class="dot"></i>Ready</span></div></button>
+                <button class="tile pressable" data-go="captures"><canvas data-scene="kitchen" data-seed="11" width="173" height="104"></canvas><div class="meta"><span class="nm">Kitchen</span><span class="chip run"><span class="spin" style="width:10px;height:10px;border-width:1.5px"></span>Processing 62%</span></div></button>
+                <button class="tile pressable" data-go="captures"><canvas data-scene="bath" data-seed="5" width="173" height="104"></canvas><div class="meta"><span class="nm">Bathroom</span><span class="chip up"><svg class="svg" style="width:12px;height:12px;stroke-width:2.4"><use href="#i-up"/></svg>Uploading 34%</span></div></button>
+                <button class="tile pressable" data-go="captures"><canvas data-scene="hall" data-seed="21" width="173" height="104"></canvas><div class="meta"><span class="nm">Hallway</span><span class="chip loc">On this iPhone only</span></div></button>
+              </div>
+              <div class="grid" style="margin-top:12px"><button class="tile addtile pressable" data-open="roomcard"><svg class="svg"><use href="#i-plus"/></svg>Capture room</button></div>
+              <div class="spacer"></div>
+            </div>
+          </div>
+
+          <!-- CAPTURES -->
+          <div class="screen" id="s-captures">
+            <div class="scroll" id="capscroll">
+              <div class="navbar"><span class="ltitle" style="cursor:default">Captures</span><button class="avatar glass pressable" data-open="profile" aria-label="Profile">M</button></div>
+              <div class="sub">City Apartment</div>
+              <div class="group"><h4>In progress</h4>
+                <div class="card">
+                  <div class="cap"><canvas data-scene="kitchen" data-seed="11" width="64" height="64"></canvas><div class="grow"><b>Kitchen</b><span class="s">Echo-3 is building the room · about 6 min</span><div class="bar" style="color:var(--accent)"><i style="width:62%"></i></div></div></div>
+                  <div class="cap"><canvas data-scene="bath" data-seed="5" width="64" height="64"></canvas><div class="grow"><b>Bathroom</b><span class="s">Uploading · 128 of 380 MB</span><div class="bar" style="color:rgba(255,255,255,.85)"><i style="width:34%"></i></div></div></div>
+                </div>
+              </div>
+              <div class="group"><h4>Ready to upload</h4>
+                <div class="card">
+                  <div class="cap"><canvas data-scene="hall" data-seed="21" width="64" height="64"></canvas><div class="grow"><b>Hallway</b><span class="s">Today 2:02 PM · 412 frames · 380 MB</span></div><button class="mini prom pressable" data-open="cost">Upload</button></div>
+                </div>
+              </div>
+              <div class="group"><h4>Ready</h4>
+                <div class="card">
+                  <div class="cap" data-go="room" style="cursor:pointer"><canvas data-scene="living" data-seed="3" width="64" height="64"></canvas><div class="grow"><b>Living Room</b><span class="s">Nov 12 · in space</span></div><svg class="svg chev"><use href="#i-chevr"/></svg></div>
+                  <div class="cap" data-go="room" style="cursor:pointer"><canvas data-scene="bed" data-seed="9" width="64" height="64"></canvas><div class="grow"><b>Bedroom</b><span class="s">Nov 10 · in space</span></div><svg class="svg chev"><use href="#i-chevr"/></svg></div>
+                  <div class="cap" data-go="room" style="cursor:pointer"><canvas data-scene="bath" data-seed="15" width="64" height="64"></canvas><div class="grow"><b>Guest Bath</b><span class="s">Nov 10 · in space</span></div><svg class="svg chev"><use href="#i-chevr"/></svg></div>
+                </div>
+              </div>
+              <div class="spacer"></div>
+            </div>
+          </div>
+
+          <!-- shared bottom chrome -->
+          <div class="bottom" id="bottom">
+            <button class="acc glass pressable" id="acc" data-go="captures">
+              <span class="spin"></span>
+              <span class="t"><b id="acc-t">Kitchen · processing</b><span class="bar"><i id="acc-bar" style="width:62%"></i></span></span>
+              <span class="pct" id="acc-p">62%</span>
+            </button>
+            <div class="row">
+              <div class="tabbar glass" role="tablist">
+                <button class="tab on" data-tab="home"><svg class="svg"><use href="#i-house"/></svg><span>Home</span></button>
+                <button class="tab" data-tab="captures"><svg class="svg"><use href="#i-stack"/></svg><span>Captures</span></button>
+              </div>
+              <button class="scanbtn prom-glass pressable" data-open="roomcard" aria-label="Scan room"><svg class="svg"><use href="#i-scan"/></svg></button>
+            </div>
+          </div>
+
+          <!-- ROOM VIEWER -->
+          <div class="screen" id="s-room">
+            <canvas class="bgc" data-scene="living" data-seed="3" width="390" height="844"></canvas>
+            <div class="topbar">
+              <button class="circ glass pressable" data-go="home" aria-label="Back"><svg class="svg"><use href="#i-chevl"/></svg></button>
+              <span class="pilltitle glass">Living Room</span>
+              <button class="circ glass pressable" aria-label="More"><svg class="svg"><use href="#i-more"/></svg></button>
+            </div>
+            <span class="embed glass">Web app splat viewer · embedded</span>
+            <div class="roomcard glass-dark">
+              <div class="chips">
+                <button class="rchip on">Living Room</button><button class="rchip">Kitchen</button><button class="rchip">Bathroom</button><button class="rchip">Hallway</button><button class="rchip">Bedroom</button>
+              </div>
+              <div><h4>Living Room</h4><div class="m">Ground floor · Nov 12, 2026 · 486 frames · doors to Kitchen and Hallway</div></div>
+              <div class="btnrow">
+                <button class="gbtn glass pressable" data-open="roomcard"><svg class="svg" style="width:18px;height:18px"><use href="#i-rotate"/></svg>Recapture</button>
+                <button class="gbtn glass pressable"><svg class="svg" style="width:18px;height:18px"><use href="#i-globe"/></svg>Open in web app</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- LIVE SCAN -->
+          <div class="screen" id="s-live">
+            <canvas class="bgc" data-scene="kitchen" data-seed="11" data-mesh="1" width="390" height="844"></canvas>
+            <div class="scanchrome">
+              <button class="circ glass xbtn pressable" data-go="home" aria-label="Cancel"><svg class="svg"><use href="#i-x"/></svg></button>
+              <div class="hintpill glass"><svg class="svg"><use href="#i-up"/></svg><span class="en">Look up to reveal the ceiling</span><span class="de">Schau nach oben, die Decke fehlt</span></div>
+              <div class="fc glass"><span id="fcount">212</span>&nbsp;<span class="en">frames</span><span class="de">Bilder</span></div>
+              <div class="rec"><i></i>Kitchen · 01:48</div>
+              <div class="shutterrow">
+                <span class="side-btn"></span>
+                <button class="shutter glass pressable" data-go="review" aria-label="Stop capture"><i></i></button>
+                <button class="circ glass side-btn pressable" aria-label="Help"><svg class="svg"><use href="#i-info"/></svg></button>
+              </div>
+            </div>
+          </div>
+
+          <!-- REVIEW -->
+          <div class="screen" id="s-review">
+            <canvas class="bgc" data-scene="kitchen" data-seed="11" data-gaps="1" width="390" height="844"></canvas>
+            <div class="topbar">
+              <button class="circ glass pressable" data-go="live" aria-label="Back"><svg class="svg"><use href="#i-chevl"/></svg></button>
+              <span class="pilltitle glass"><span class="en">Review · Kitchen</span><span class="de">Prüfen · Kitchen</span></span>
+              <span style="width:44px"></span>
+            </div>
+            <div class="bottompanel glass-dark">
+              <h4><span class="en">Almost done</span><span class="de">Fast fertig</span></h4>
+              <div class="gap"><i></i><span class="en">Ceiling above the window is missing</span><span class="de">Decke über dem Fenster fehlt</span></div>
+              <div class="gap"><i></i><span class="en">Gap behind the counter</span><span class="de">Lücke hinter der Arbeitsplatte</span></div>
+              <p><span class="en">412 frames · about 380 MB. Fill the two gaps for a cleaner result, or finish the room.</span><span class="de">412 Bilder · etwa 380 MB. Schließe die zwei Lücken für ein saubereres Ergebnis oder schließe den Raum ab.</span></p>
+              <div class="btnrow">
+                <button class="gbtn glass pressable" data-go="live"><span class="en">Keep scanning</span><span class="de">Weiter scannen</span></button>
+                <button class="gbtn prom pressable" data-go="door"><span class="en">Room done</span><span class="de">Raum fertig</span></button>
+              </div>
+            </div>
+          </div>
+
+          <!-- DOOR -->
+          <div class="screen" id="s-door">
+            <canvas class="bgc" data-scene="kitchen" data-seed="11" data-door="1" width="390" height="844"></canvas>
+            <button class="reticle" id="reticle" aria-label="Mark door"><span class="lab"><span class="en">Door · 0.9 m</span><span class="de">Tür · 0,9 m</span></span></button>
+            <div class="topbar">
+              <button class="circ glass pressable" data-go="review" aria-label="Back"><svg class="svg"><use href="#i-chevl"/></svg></button>
+              <span class="pilltitle glass"><span class="en">Where to next?</span><span class="de">Wo geht es weiter?</span></span>
+              <span style="width:44px"></span>
+            </div>
+            <div class="bottompanel glass-dark">
+              <p><span class="en">Point at the door you'll walk through next and tap it.</span><span class="de">Richte das iPhone auf die Tür, durch die du als Nächstes gehst, und tippe sie an.</span></p>
+              <div class="btnrow">
+                <button class="gbtn glass pressable" data-go="home" data-toast="Kitchen is uploading"><span class="en">Last room</span><span class="de">Letzter Raum</span></button>
+                <button class="gbtn prom pressable" data-go="next"><svg class="svg" style="width:18px;height:18px"><use href="#i-door"/></svg><span class="en">Mark door</span><span class="de">Tür markieren</span></button>
+              </div>
+            </div>
+          </div>
+
+          <!-- NEXT ROOM -->
+          <div class="screen" id="s-next">
+            <canvas class="bgc" data-scene="hall" data-seed="21" width="390" height="844"></canvas>
+            <div style="position:absolute;inset:0;background:rgba(0,0,0,.25)"></div>
+            <div class="topbar">
+              <button class="circ glass pressable" data-go="home" aria-label="Close"><svg class="svg"><use href="#i-x"/></svg></button>
+              <span class="pilltitle glass"><span class="en">Next room</span><span class="de">Nächster Raum</span></span>
+              <span style="width:44px"></span>
+            </div>
+            <div class="bottompanel glass-dark">
+              <h4><span class="en">Walk through and close the door</span><span class="de">Durchgehen und Tür schließen</span></h4>
+              <div class="list">
+                <div class="li"><svg class="svg" style="color:#fff"><use href="#i-check"/></svg><span class="grow"><span class="en">Kitchen saved, uploading in the background</span><span class="de">Kitchen gespeichert, lädt im Hintergrund hoch</span></span></div>
+                <div class="li"><svg class="svg" style="color:var(--accent)"><use href="#i-door"/></svg><span class="grow"><span class="en">Start right behind the door you marked</span><span class="de">Starte direkt hinter der markierten Tür</span></span></div>
+              </div>
+              <div class="field"><label for="nx"><span class="en">Room name</span><span class="de">Raumname</span></label><input id="nx" value="Hallway"></div>
+              <button class="gbtn prom full pressable" data-go="live"><span class="en">Door is closed, start</span><span class="de">Tür ist zu, starten</span></button>
+            </div>
+          </div>
+
+          <!-- overlays -->
+          <div id="ov-dim" class="dim" hidden></div>
+
+          <div id="ov-menu" class="menu glass-dark" role="menu" hidden>
+            <button class="mi" role="menuitem"><span class="grow">City Apartment<span class="s">7 rooms</span></span><svg class="svg" style="color:var(--accent)"><use href="#i-check"/></svg></button>
+            <button class="mi" role="menuitem"><span class="grow">Holiday Home<span class="s">2 rooms</span></span></button>
+            <button class="mi" role="menuitem"><span class="grow">Office<span class="s">empty</span></span></button>
+            <div class="msep"></div>
+            <button class="mi" role="menuitem"><svg class="svg"><use href="#i-plus"/></svg><span class="grow">New space</span></button>
+          </div>
+
+          <div id="ov-roomcard" class="sheet glass-dark" role="dialog" aria-label="New room" hidden>
+            <div class="grab"></div>
+            <div class="sheethead"><h5><span class="en">New room</span><span class="de">Neuer Raum</span></h5><button class="circ glass pressable" data-close aria-label="Close" style="width:36px;height:36px"><svg class="svg" style="width:18px;height:18px"><use href="#i-x"/></svg></button></div>
+            <div class="field"><label for="rn"><span class="en">Room name</span><span class="de">Raumname</span></label><input id="rn" value="Kitchen"></div>
+            <div class="floors" style="margin:0"><button class="on">Ground</button><button>1st</button><button>Basement</button></div>
+            <div class="info"><svg class="svg"><use href="#i-door"/></svg><span><span class="en">Starts behind the door from <b>Living room</b>. Close it before you begin.</span><span class="de">Startet hinter der Tür vom <b>Living Room</b>. Schließe sie vor dem Start.</span></span></div>
+            <div class="list">
+              <div class="li"><span class="grow"><span class="en">Lights on</span><span class="de">Licht an</span></span><button class="sw" role="switch" aria-checked="true" aria-label="Lights on"></button></div>
+              <div class="li"><span class="grow"><span class="en">All doors closed</span><span class="de">Alle Türen zu</span></span><button class="sw" role="switch" aria-checked="true" aria-label="Doors closed"></button></div>
+              <div class="li"><span class="grow"><span class="en">Nobody in the room</span><span class="de">Niemand im Raum</span></span><button class="sw" role="switch" aria-checked="false" aria-label="Nobody in the room"></button></div>
+            </div>
+            <button class="gbtn prom full pressable" data-go="live"><svg class="svg" style="width:20px;height:20px"><use href="#i-scan"/></svg><span class="en">Start scan</span><span class="de">Scan starten</span></button>
+          </div>
+
+          <div id="ov-profile" class="sheet glass-dark" role="dialog" aria-label="Profile" hidden>
+            <div class="grab"></div>
+            <div class="sheethead"><h5>Profile</h5><button class="circ glass pressable" data-close aria-label="Close" style="width:36px;height:36px"><svg class="svg" style="width:18px;height:18px"><use href="#i-x"/></svg></button></div>
+            <div class="prof"><span class="avatar">M</span><div><div style="font-size:19px;font-weight:700">My account</div><div style="font-size:14px;color:rgba(255,255,255,.6)">name@example.com</div></div></div>
+            <div class="list">
+              <div class="li"><span class="ic" style="background:rgba(255,255,255,.12)"><svg class="svg"><use href="#i-house"/></svg></span><span class="grow">Spaces</span><span class="s">3</span><svg class="svg chev"><use href="#i-chevr"/></svg></div>
+              <div class="li"><span class="ic" style="background:rgba(255,255,255,.12)"><svg class="svg"><use href="#i-bell"/></svg></span><span class="grow">Notify me when a room is ready</span><button class="sw" role="switch" aria-checked="true" aria-label="Notifications"></button></div>
+              <div class="li"><span class="ic" style="background:rgba(255,255,255,.12)"><svg class="svg"><use href="#i-book"/></svg></span><span class="grow">How to scan</span><svg class="svg chev"><use href="#i-chevr"/></svg></div>
+              <div class="li"><span class="ic" style="background:rgba(255,255,255,.12)"><svg class="svg"><use href="#i-globe"/></svg></span><span class="grow">Open web app</span><svg class="svg chev"><use href="#i-chevr"/></svg></div>
+            </div>
+            <button class="gbtn glass full pressable" data-go="login" style="color:#FF6B6B"><svg class="svg" style="width:18px;height:18px"><use href="#i-out"/></svg>Sign Out</button>
+          </div>
+
+          <div id="ov-cost" class="alert glass-dark" role="alertdialog" aria-label="Confirm upload" hidden>
+            <h6>Upload Hallway?</h6>
+            <p>380 MB over Wi-Fi. Processing costs 1,312 credits (900 per room + 412 frames) and takes about 15 minutes.</p>
+            <div class="btnrow"><button class="gbtn glass pressable" data-close>Cancel</button><button class="gbtn prom pressable" data-close data-toast="Hallway is uploading">Upload</button></div>
+          </div>
+
+          <div class="homebar"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  /* ---------- Splat-look room painter ---------- */
+  function rng(s){return()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+  const P={
+    living:{ceil:'#e9e3d8',wall:'#d6cbb8',side:'#bfae95',floor:'#8a6142',rug:'#b9a58c',win:'#fbf6e8',sofa:'#56606e',plant:'#46613c',lamp:'#f1b766'},
+    kitchen:{ceil:'#eeeeea',wall:'#dcdedb',side:'#c3c7c4',floor:'#7d7a74',rug:'#5e6b74',win:'#f3f8ff',sofa:'#3d5566',plant:'#4f6b3d',lamp:'#e9d6b0'},
+    bath:{ceil:'#ecf0f1',wall:'#c9d6da',side:'#a9bcc2',floor:'#6f7d82',rug:'#e8eef0',win:'#f6fbff',sofa:'#f2f4f4',plant:'#5a7a52',lamp:'#d9e7ee'},
+    bed:{ceil:'#ebe6e0',wall:'#cfc3b8',side:'#b3a395',floor:'#9c7a5c',rug:'#d8cfc3',win:'#fff7ea',sofa:'#8e7d9a',plant:'#56704a',lamp:'#f0c27a'},
+    hall:{ceil:'#e5e2dc',wall:'#c8c0b4',side:'#a99e8f',floor:'#6c513b',rug:'#7a3f32',win:'#efe9dc',sofa:'#54493f',plant:'#4a5f3f',lamp:'#f3c06d'}
+  };
+  function poly(c,pts,f){c.beginPath();pts.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.closePath();c.fillStyle=f;c.fill()}
+  function paint(cv){
+    const key=cv.dataset.scene, seed=+cv.dataset.seed||1, pal=P[key], R=rng(seed);
+    const W=cv.width,H=cv.height,c=cv.getContext('2d');
+    const tall=H/W>1.3;
+    const bx0=W*(tall?.2:.27),bx1=W*(tall?.8:.73),by0=H*(tall?.27:.2),by1=H*(tall?.56:.6);
+    // base geometry
+    poly(c,[[0,0],[W,0],[bx1,by0],[bx0,by0]],pal.ceil);
+    poly(c,[[0,0],[bx0,by0],[bx0,by1],[0,H]],pal.side);
+    poly(c,[[W,0],[W,H],[bx1,by1],[bx1,by0]],pal.side);
+    c.fillStyle=pal.wall;c.fillRect(bx0,by0,bx1-bx0,by1-by0);
+    poly(c,[[bx0,by1],[bx1,by1],[W,H],[0,H]],pal.floor);
+    // shading of side walls
+    let g=c.createLinearGradient(0,0,bx0,0);g.addColorStop(0,'rgba(0,0,0,.18)');g.addColorStop(1,'rgba(0,0,0,0)');poly(c,[[0,0],[bx0,by0],[bx0,by1],[0,H]],g);
+    g=c.createLinearGradient(W,0,bx1,0);g.addColorStop(0,'rgba(0,0,0,.28)');g.addColorStop(1,'rgba(0,0,0,.04)');poly(c,[[W,0],[W,H],[bx1,by1],[bx1,by0]],g);
+    // window on back wall (left part) or left wall
+    const ww=(bx1-bx0)*.34, wx=bx0+(bx1-bx0)*.08, wy=by0+(by1-by0)*.14, wh=(by1-by0)*.55;
+    c.fillStyle=pal.win;c.fillRect(wx,wy,ww,wh);
+    c.fillStyle='rgba(120,110,100,.5)';c.fillRect(wx+ww/2-1,wy,2,wh);c.fillRect(wx,wy+wh*.45,ww,2);
+    // door
+    let door=null;
+    if(cv.dataset.door){const dw=(bx1-bx0)*.26,dx=bx1-dw-(bx1-bx0)*.08,dy=by0+(by1-by0)*.12;door={x:dx,y:dy,w:dw,h:by1-dy};c.fillStyle='#8f6f52';c.fillRect(dx-3,dy-3,dw+6,door.h+3);c.fillStyle='#b8946f';c.fillRect(dx,dy,dw,door.h);c.fillStyle='#4b3a2a';c.beginPath();c.arc(dx+dw*.82,dy+door.h*.55,2.2,0,7);c.fill()}
+    // rug
+    const fy=by1+(H-by1)*.25;
+    poly(c,[[W*.24,fy],[W*.76,fy],[W*.86,fy+(H-by1)*.38],[W*.14,fy+(H-by1)*.38]],pal.rug);
+    // sofa / counter
+    const sy=by1-(by1-by0)*.18, sx=key==='kitchen'?bx0:W*.3, sw=key==='kitchen'?(bx1-bx0):W*.4, sh=(by1-by0)*.32+(H-by1)*.08;
+    c.fillStyle=pal.sofa;c.beginPath();c.roundRect?c.roundRect(sx,sy,sw,sh,8):c.rect(sx,sy,sw,sh);c.fill();
+    c.fillStyle='rgba(0,0,0,.22)';c.fillRect(sx,sy+sh*.62,sw,sh*.38);
+    // plant
+    const px=key==='kitchen'?W*.1:W*.84, py=by1+(H-by1)*.05;
+    for(let i=0;i<22;i++){c.fillStyle=pal.plant;c.beginPath();c.ellipse(px+(R()-.5)*W*.09,py-R()*H*.17,W*.02+R()*W*.02,H*.012+R()*H*.01,R()*3,0,7);c.fill()}
+    c.fillStyle='#d9d2c4';c.fillRect(px-W*.025,py,W*.05,H*.04);
+    // sample + splat pass
+    const img=c.getImageData(0,0,W,H).data;
+    const N=Math.round(W*H/90);
+    for(let i=0;i<N;i++){
+      const x=R()*W,y=R()*H,idx=((y|0)*W+(x|0))*4;
+      let r=img[idx],gg=img[idx+1],b=img[idx+2];const j=(R()-.5)*26;r=Math.max(0,Math.min(255,r+j));gg=Math.max(0,Math.min(255,gg+j));b=Math.max(0,Math.min(255,b+j));
+      const s=(2+R()*9)*(0.55+y/H)*(W/390+.5);
+      c.save();c.translate(x,y);c.rotate(R()*Math.PI);c.scale(1,.35+R()*.75);
+      const gr=c.createRadialGradient(0,0,0,0,0,s);gr.addColorStop(0,`rgba(${r|0},${gg|0},${b|0},${.35+R()*.4})`);gr.addColorStop(1,`rgba(${r|0},${gg|0},${b|0},0)`);
+      c.fillStyle=gr;c.fillRect(-s,-s,2*s,2*s);c.restore();
+    }
+    // window light + lamp glow
+    g=c.createRadialGradient(wx+ww/2,wy+wh/2,0,wx+ww/2,wy+wh/2,W*.55);g.addColorStop(0,'rgba(255,250,235,.45)');g.addColorStop(1,'rgba(255,250,235,0)');c.fillStyle=g;c.fillRect(0,0,W,H);
+    g=c.createRadialGradient(bx1-(bx1-bx0)*.1,by0+(by1-by0)*.3,0,bx1-(bx1-bx0)*.1,by0+(by1-by0)*.3,W*.3);g.addColorStop(0,pal.lamp+'88');g.addColorStop(1,pal.lamp+'00');c.fillStyle=g;c.fillRect(0,0,W,H);
+    // floaters at the edges, typical for splats
+    for(let i=0;i<Math.round(W/12);i++){const x=R()<.5?R()*W*.12:W-R()*W*.12,y=R()*H,s=4+R()*16;const gr=c.createRadialGradient(x,y,0,x,y,s);gr.addColorStop(0,'rgba(255,255,255,.12)');gr.addColorStop(1,'rgba(255,255,255,0)');c.fillStyle=gr;c.fillRect(x-s,y-s,2*s,2*s)}
+    // vignette
+    g=c.createRadialGradient(W/2,H*.45,Math.min(W,H)*.3,W/2,H*.45,Math.max(W,H)*.8);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.45)');c.fillStyle=g;c.fillRect(0,0,W,H);
+    if(cv.dataset.mesh) mesh(c,W,H,bx0,bx1,by0,by1);
+    if(cv.dataset.gaps) gaps(c,W,H,bx0,bx1,by0,by1,wx,ww,sy);
+    return door;
+  }
+  function mesh(c,W,H,bx0,bx1,by0,by1){
+    // covered: floor + walls tinted, ceiling partly
+    c.save();
+    poly(c,[[bx0,by1],[bx1,by1],[W,H],[0,H]],'rgba(255,255,255,.10)');
+    c.fillStyle='rgba(255,255,255,.07)';c.fillRect(bx0,by0,bx1-bx0,by1-by0);
+    poly(c,[[0,0],[bx0,by0],[bx0,by1],[0,H]],'rgba(255,255,255,.07)');
+    poly(c,[[W*.55,0],[W,0],[bx1,by0],[bx0+(bx1-bx0)*.7,by0]],'rgba(255,255,255,.07)');
+    c.strokeStyle='rgba(255,255,255,.28)';c.lineWidth=1;
+    for(let i=0;i<=12;i++){const t=i/12;c.beginPath();c.moveTo(bx0+(bx1-bx0)*t,by1);c.lineTo(W*t,H);c.stroke()}
+    for(let i=1;i<=8;i++){const t=Math.pow(i/8,1.8),y=by1+(H-by1)*t,x0=bx0*(1-t),x1=bx1+(W-bx1)*t;c.beginPath();c.moveTo(x0,y);c.lineTo(x1,y);c.stroke()}
+    for(let i=0;i<=8;i++){const x=bx0+(bx1-bx0)*i/8;c.beginPath();c.moveTo(x,by0);c.lineTo(x,by1);c.stroke()}
+    for(let i=0;i<=5;i++){const y=by0+(by1-by0)*i/5;c.beginPath();c.moveTo(bx0,y);c.lineTo(bx1,y);c.stroke()}
+    c.setLineDash([6,6]);c.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()||'#A98BFF';c.lineWidth=2;
+    c.beginPath();c.moveTo(0,0);c.lineTo(bx0,by0);c.lineTo(bx0+(bx1-bx0)*.7,by0);c.lineTo(W*.55,0);c.stroke();
+    c.restore();
+  }
+  function gaps(c,W,H,bx0,bx1,by0,by1,wx,ww,sy){
+    [[wx+ww/2,by0-H*.05,W*.16,H*.045],[bx0+(bx1-bx0)*.62,sy-6,W*.12,H*.025]].forEach(([x,y,rx,ry])=>{
+      c.save();c.fillStyle='rgba(255,59,48,.28)';c.strokeStyle='rgba(255,107,107,.95)';c.lineWidth=2;c.setLineDash([5,4]);
+      c.beginPath();c.ellipse(x,y,rx,ry,0,0,7);c.fill();c.stroke();c.restore();
+    });
+  }
+  let doorRect=null;
+  document.querySelectorAll('canvas[data-scene]').forEach(cv=>{const d=paint(cv);if(d)doorRect={...d,W:cv.width,H:cv.height}});
+
+  /* ---------- Device scaling ---------- */
+  const stage=document.getElementById('stage'),device=document.getElementById('device');
+  function fit(){const s=Math.min(1,stage.clientWidth/414);device.style.transform=`scale(${s})`;stage.style.height=(868*s)+'px'}
+  addEventListener('resize',fit);fit();
+
+  /* ---------- Navigation ---------- */
+  const phone=document.getElementById('phone'),bottom=document.getElementById('bottom');
+  const NOTES={
+    login:['Anmelden','Der eigene Raum im Splat-Look füllt den ganzen Screen, darüber eine Glas-Karte mit zwei Feldern und einem klaren Haupt-Button. Kein Logo-Wirrwarr, kein Formular auf weißem Grund.',['.glassEffect(.regular, in: .rect(cornerRadius: 38))','.buttonStyle(.glassProminent)','.tint(.cosmicOrange)']],
+    home:['Zuhause','Der aktuelle Space mit Startraum, Stockwerk-Auswahl und allen Räumen samt Status. Über den Titel wechselst du den Space. Unten die schwebende Glas-Tab-Bar mit abgesetztem Scan-Button; darüber zeigt eine Leiste, was gerade hochlädt oder berechnet wird. Scroll nach unten: die Tab-Bar wird kleiner und die Leiste rutscht daneben.',['TabView { Tab(…) }','.tabBarMinimizeBehavior(.onScrollDown)','.tabViewBottomAccessory','.toolbarTitleMenu']],
+    menu:['Space wechseln','Das Title-Menü der Navigationsleiste: Spaces wechseln oder einen neuen anlegen, ohne eigenen Screen. Ersetzt das heutige Spaces-Sheet und die rechte Menüleiste.',['.toolbarTitleMenu { … }','Menu']],
+    room:['Raum in 3D','Der Splat-Viewer der Web-App läuft eingebettet und randlos. Davor nur gläserne Steuerelemente: zurück, Raum-Chips zum Springen zwischen Räumen, Neu aufnehmen. Einzelne Räume lassen sich jederzeit neu scannen.',['WKWebView (SplatWebView)','.glassEffect()','GlassEffectContainer']],
+    captures:['Aufnahmen','Alle Captures nach Zustand sortiert: läuft, bereit zum Hochladen, fertig. Vor dem Upload eine kurze Bestätigung mit Größe und Credits, wie bisher, nur klarer.',['List','.alert','ProgressView(value:)']],
+    profile:['Profil','Konto, Spaces, Mitteilung bei fertigem Raum, Scan-Anleitung, Abmelden. Als Sheet über dem aktuellen Screen statt als eigener Menüpunkt.',['.sheet + .presentationDetents','Toggle','Form']],
+    roomcard:['1 · Raum-Karte','Vor jedem Scan: Name, Stockwerk und die Checkliste aus dem Capture-Plan. Der Hinweis auf die Tür vom vorherigen Raum macht die Verknüpfung sichtbar.',['.sheet','.presentationDetents([.medium, .large])','Toggle']],
+    live:['2 · Live-Scan','Kamera mit LiDAR-Netz: Erfasste Flächen sind hell eingefärbt, die fehlende Decke ist gestrichelt umrandet. Darüber steht immer nur ein Hinweis, direkt aus der Lückenerkennung des Capture-Kerns. Prozentwerte gibt es keine. Der Aufnahme-Button ist ein großer Glas-Kreis.',['GlassEffectContainer','.glassEffectID(_:in:)','.buttonStyle(.glass)']],
+    review:['3 · Review','Vorschau mit markierten Lücken. Zwei klare Wege: weiter scannen oder den Raum abschließen.',['.glassEffect(in: .rect(cornerRadius: 34))','.buttonStyle(.glassProminent)']],
+    door:['4 · Tür markieren','„Wo geht es weiter?“: Der Nutzer richtet das iPhone auf die nächste Tür und tippt sie an. Daraus entsteht die Verbindung zwischen zwei Räumen. Tipp im Prototyp auf die Tür.',['ARKit Raycast','.glassEffect()']],
+    next:['5 · Nächster Raum','Der fertige Raum lädt im Hintergrund hoch. Der Nutzer geht durch die Tür, schließt sie und startet direkt dahinter den nächsten Raum.',['.tabViewBottomAccessory','BGContinuedProcessingTask']]
+  };
+  const screens=['login','home','captures','room','live','review','door','next'];
+  const overlays=['menu','roomcard','profile','cost'];
+  let cur='home';
+  function closeOv(){overlays.forEach(o=>document.getElementById('ov-'+o).hidden=true);document.getElementById('ov-dim').hidden=true}
+  function openOv(o){closeOv();document.getElementById('ov-'+o).hidden=false;document.getElementById('ov-dim').hidden=false;setNote(o)}
+  function setNote(k){const n=NOTES[k];if(!n)return;document.getElementById('n-t').textContent=n[0];document.getElementById('n-d').textContent=n[1];const a=document.getElementById('n-api');a.innerHTML='';n[2].forEach(s=>{const e=document.createElement('code');e.textContent=s;a.appendChild(e)});
+    document.querySelectorAll('.nav button').forEach(b=>b.setAttribute('aria-current',b.dataset.go===k?'true':'false'))}
+  function go(s){
+    closeOv();
+    if(overlays.includes(s)){ if(!['home','captures'].includes(cur)) show('home'); openOv(s); return }
+    show(s); setNote(s);
+  }
+  function show(s){
+    cur=s;screens.forEach(x=>document.getElementById('s-'+x).classList.toggle('on',x===s));
+    const tabbed=s==='home'||s==='captures';bottom.hidden=!tabbed;
+    document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.dataset.tab===s));
+    bottom.classList.remove('min');
+    if(s==='door'){const r=document.getElementById('reticle');r.classList.remove('set');if(doorRect){r.style.left=doorRect.x+'px';r.style.top=doorRect.y+'px';r.style.width=doorRect.w+'px';r.style.height=doorRect.h+'px'}}
+  }
+  function toast(t){const e=document.createElement('div');e.className='toast glass-dark';e.innerHTML='<svg class="svg" style="width:18px;height:18px;color:var(--accent)"><use href="#i-check"/></svg>';e.append(t);phone.appendChild(e);setTimeout(()=>e.remove(),2600)}
+  document.addEventListener('click',e=>{
+    const t=e.target.closest('[data-go],[data-open],[data-close],[data-tab],.sw,.floors button,.rchip,#spacebtn,#ov-dim,#reticle,.mi');
+    if(!t)return;
+    if(t.matches('.sw')){t.setAttribute('aria-checked',t.getAttribute('aria-checked')==='true'?'false':'true');return}
+    if(t.matches('.floors button')){t.parentElement.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b===t));return}
+    if(t.matches('.rchip')){t.parentElement.querySelectorAll('.rchip').forEach(b=>b.classList.toggle('on',b===t));return}
+    if(t.id==='spacebtn'){openOv('menu');return}
+    if(t.id==='ov-dim'||t.matches('.mi')){closeOv();setNote(cur);return}
+    if(t.id==='reticle'){t.classList.add('set');setTimeout(()=>go('next'),450);return}
+    if(t.dataset.tab){go(t.dataset.tab);return}
+    if(t.hasAttribute('data-close')){closeOv();setNote(cur);if(t.dataset.toast){toast(t.dataset.toast);setAcc(t.dataset.toast)}return}
+    if(t.dataset.open){openOv(t.dataset.open);return}
+    if(t.dataset.go){go(t.dataset.go);if(t.dataset.toast){toast(t.dataset.toast);setAcc(t.dataset.toast)}}
+  });
+  function setAcc(txt){document.getElementById('acc-t').textContent=txt.replace(' is uploading',' · uploading');document.getElementById('acc-bar').style.width='8%';document.getElementById('acc-p').textContent='8%'}
+  document.getElementById('loginform').addEventListener('submit',e=>{e.preventDefault();go('home')});
+  document.querySelector('.hero').addEventListener('keydown',e=>{if(e.key==='Enter')go('room')});
+  // tab bar minimize on scroll
+  ['homescroll','capscroll'].forEach(id=>{const el=document.getElementById(id);let last=0;el.addEventListener('scroll',()=>{const y=el.scrollTop;if(y>last+4&&y>60)bottom.classList.add('min');else if(y<last-4)bottom.classList.remove('min');last=y},{passive:true})});
+  // language toggle
+  // accent switch
+  const ACC={silver:'Silber: mattes, helles Metall mit dunkler Schrift, ohne Lichtkante. Alles andere bleibt Glas.',supernova:'Supernova: Violett, Magenta und das Türkis von ionisiertem Sauerstoff, wie in den Hüllen explodierter Sterne.',nebula:'Nebula: das Pink von leuchtendem Wasserstoff, übergehend in Violett, wie in Emissionsnebeln.',pulsar:'Pulsar: einfarbiges Sauerstoff-Türkis, die kühlste und ruhigste Variante.'};
+  function accent(a){document.documentElement.dataset.accent=a;document.querySelectorAll('[data-acc]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.acc===a));document.getElementById('acc-note').textContent=ACC[a];document.querySelectorAll('canvas[data-mesh]').forEach(paint)}
+  document.querySelectorAll('[data-acc]').forEach(b=>b.onclick=()=>accent(b.dataset.acc));accent('silver');
+  // live frame counter
+  let f=212;setInterval(()=>{if(cur==='live'){f+=1;document.getElementById('fcount').textContent=f}},400);
+  go('home');
+})();
+</script>
